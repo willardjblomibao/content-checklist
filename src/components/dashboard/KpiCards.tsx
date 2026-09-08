@@ -24,15 +24,26 @@ export function KpiCards({ totals }: { totals: Record<string, number> }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
       {items.map((item) => (
-        <Card key={item.label} className={item.highlight ? 'border-pine-200 bg-pine-50' : ''}>
-          <div className="px-4 py-4">
-            <div className="flex items-center gap-2 text-ink-500">
-              <item.icon className="h-3.5 w-3.5" />
-              <span className="text-xs font-medium">{item.label}</span>
+        <Card
+          key={item.label}
+          className={item.highlight ? 'bg-gradient-to-br from-pine-600 to-pine-900 border-transparent' : ''}
+        >
+          <div className="px-4 py-4 flex items-start gap-3">
+            <div
+              className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${
+                item.highlight ? 'bg-white/15 text-white' : 'bg-pine-50 text-pine-700'
+              }`}
+            >
+              <item.icon className="h-4 w-4" />
             </div>
-            <p className={`text-2xl font-semibold mt-1.5 ${item.highlight ? 'text-pine-800' : 'text-ink-900'}`}>
-              {item.value}
-            </p>
+            <div className="min-w-0">
+              <span className={`text-xs font-medium ${item.highlight ? 'text-pine-100' : 'text-ink-500'}`}>
+                {item.label}
+              </span>
+              <p className={`text-2xl font-semibold mt-1 ${item.highlight ? 'text-white' : 'text-ink-900'}`}>
+                {item.value}
+              </p>
+            </div>
           </div>
         </Card>
       ))}
@@ -54,13 +65,15 @@ export function RangeSwitcher({
     { key: 'custom', label: 'Custom' },
   ]
   return (
-    <div className="inline-flex rounded-md border border-ink-200 bg-white p-0.5">
+    <div className="inline-flex rounded-full border border-ink-100 bg-white p-1 shadow-soft">
       {options.map((o) => (
         <button
           key={o.key}
           onClick={() => onChange(o.key)}
-          className={`px-3 py-1.5 text-sm font-medium rounded-[6px] transition-colors ${
-            value === o.key ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'
+          className={`px-3.5 py-1.5 text-sm font-medium rounded-full transition-colors ${
+            value === o.key
+              ? 'bg-gradient-to-b from-pine-500 to-pine-700 text-white'
+              : 'text-ink-600 hover:bg-pine-50'
           }`}
         >
           {o.label}

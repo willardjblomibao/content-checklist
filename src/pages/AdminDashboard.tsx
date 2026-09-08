@@ -129,7 +129,7 @@ export default function AdminDashboard() {
                           <td className="px-5 py-3 text-right font-semibold text-ink-900">{total}</td>
                         </tr>
                       ))}
-                      <tr className="bg-ink-50 font-semibold text-ink-900">
+                      <tr className="bg-pine-50 font-semibold text-ink-900">
                         <td className="px-5 py-3">Team Total</td>
                         {PRODUCTION_FIELDS.map((f) => (
                           <td key={f.countKey} className="px-3 py-3 text-right">

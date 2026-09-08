@@ -4,8 +4,8 @@ import { Download, Upload } from 'lucide-react'
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   PieChart,
   Pie,
   Cell,
@@ -22,7 +22,7 @@ import { Button, Card, Field, Input, PageSpinner, Select } from '../components/u
 import { PRODUCTION_FIELDS, totalItems, type Client, type Profile, type ProductionLogWithRelations } from '../types/database'
 import { startOfMonthISO, todayISO } from '../lib/utils'
 
-const COLORS = ['#177566', '#D2920F', '#C65D4C', '#727872', '#3DA491', '#B5790A']
+const COLORS = ['#177566', '#D2920F', '#3DA491', '#B5790A', '#7BC2B4', '#0F4F44']
 
 export default function Reports() {
   const { toast } = useToast()
@@ -102,6 +102,12 @@ export default function Reports() {
       { name: 'In Progress', value: inProgress },
     ]
   }, [logs])
+
+  const completionPct = useMemo(() => {
+    const [completed, inProgress] = statusSplit
+    const total = completed.value + inProgress.value
+    return total === 0 ? 0 : Math.round((completed.value / total) * 100)
+  }, [statusSplit])
 
   function exportCsv() {
     const rows = logs.map((l) => ({
@@ -263,11 +269,17 @@ export default function Reports() {
           <ChartCard title="Production by Assistant">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={byAssistant}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="total" fill="#177566" radius={[4, 4, 0, 0]} />
+                <defs>
+                  <linearGradient id="barGreen" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3DA491" />
+                    <stop offset="100%" stopColor="#0F4F44" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: '#EFF8F6' }} />
+                <Bar dataKey="total" fill="url(#barGreen)" radius={[8, 8, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -275,11 +287,17 @@ export default function Reports() {
           <ChartCard title="Production by Client">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={byClient}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="total" fill="#3DA491" radius={[4, 4, 0, 0]} />
+                <defs>
+                  <linearGradient id="barAmber" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#D2920F" />
+                    <stop offset="100%" stopColor="#B5790A" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: '#FDF5E7' }} />
+                <Bar dataKey="total" fill="url(#barAmber)" radius={[8, 8, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -287,9 +305,17 @@ export default function Reports() {
           <ChartCard title="Production by Content Type">
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie data={byContentType} dataKey="value" nameKey="name" outerRadius={90} label>
+                <Pie
+                  data={byContentType}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={55}
+                  outerRadius={90}
+                  paddingAngle={3}
+                  cornerRadius={6}
+                >
                   {byContentType.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="none" />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -299,27 +325,57 @@ export default function Reports() {
           </ChartCard>
 
           <ChartCard title="Completed vs In Progress">
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={statusSplit} dataKey="value" nameKey="name" outerRadius={90} label>
-                  <Cell fill="#177566" />
-                  <Cell fill="#D2920F" />
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="relative flex flex-col items-center">
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={statusSplit}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="90%"
+                    innerRadius={80}
+                    outerRadius={110}
+                    paddingAngle={3}
+                    cornerRadius={8}
+                    startAngle={180}
+                    endAngle={0}
+                  >
+                    <Cell fill="#177566" stroke="none" />
+                    <Cell fill="#DBDDD7" stroke="none" />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-x-0 bottom-6 flex flex-col items-center pointer-events-none">
+                <span className="text-2xl font-semibold text-ink-900">{completionPct}%</span>
+                <span className="text-xs text-ink-500">Completed</span>
+              </div>
+            </div>
           </ChartCard>
 
           <ChartCard title="Production Over Time" className="lg:col-span-2">
             <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={overTime}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+              <AreaChart data={overTime}>
+                <defs>
+                  <linearGradient id="areaGreen" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#177566" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#177566" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} axisLine={false} tickLine={false} />
                 <Tooltip />
-                <Line type="monotone" dataKey="total" stroke="#177566" strokeWidth={2} dot={false} />
-              </LineChart>
+                <Area
+                  type="monotone"
+                  dataKey="total"
+                  stroke="#177566"
+                  strokeWidth={2.5}
+                  fill="url(#areaGreen)"
+                  dot={{ r: 3, fill: '#177566', strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#177566', strokeWidth: 0 }}
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
         </div>

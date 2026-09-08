@@ -31,7 +31,7 @@ export function Dialog({
   return createPortal(
     <div className="fixed inset-0 z-40 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
       <div className="fixed inset-0 bg-ink-950/40" onClick={onClose} />
-      <div className={`relative bg-white rounded-card shadow-card w-full ${width} mt-8 sm:mt-0`}>
+      <div className={`relative bg-white rounded-xl2 shadow-softLg w-full ${width} mt-8 sm:mt-0`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-ink-100">
           <h2 className="text-base font-semibold text-ink-900">{title}</h2>
           <button onClick={onClose} className="text-ink-400 hover:text-ink-700" aria-label="Close">

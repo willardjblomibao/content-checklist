@@ -13,16 +13,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-pine-700 text-white hover:bg-pine-800 active:bg-pine-900 disabled:bg-ink-200 disabled:text-ink-400',
-  secondary: 'bg-white text-ink-800 border border-ink-200 hover:bg-ink-50 active:bg-ink-100',
-  ghost: 'bg-transparent text-ink-700 hover:bg-ink-100',
+  primary:
+    'bg-gradient-to-b from-pine-500 to-pine-700 text-white shadow-soft hover:from-pine-400 hover:to-pine-600 active:from-pine-600 active:to-pine-800 disabled:from-ink-200 disabled:to-ink-200 disabled:text-ink-400 disabled:shadow-none',
+  secondary: 'bg-white text-ink-800 border border-ink-200 hover:bg-pine-50 active:bg-pine-100',
+  ghost: 'bg-transparent text-ink-700 hover:bg-pine-50',
   danger: 'bg-clay-600 text-white hover:bg-clay-500',
 }
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-sm gap-1.5',
-  md: 'h-9 px-4 text-sm gap-2',
-  lg: 'h-11 px-5 text-base gap-2',
+  sm: 'h-8 px-3.5 text-sm gap-1.5',
+  md: 'h-9 px-5 text-sm gap-2',
+  lg: 'h-11 px-6 text-base gap-2',
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -31,7 +32,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors whitespace-nowrap disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center rounded-full font-medium transition-colors whitespace-nowrap disabled:cursor-not-allowed',
         variantStyles[variant],
         sizeStyles[size],
         className
@@ -48,7 +49,7 @@ Button.displayName = 'Button'
 // ---------- Card ----------
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={cn('bg-white border border-ink-100 rounded-card shadow-card', className)}>
+    <div className={cn('bg-white border border-ink-100 rounded-xl2 shadow-soft', className)}>
       {children}
     </div>
   )

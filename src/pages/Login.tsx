@@ -23,17 +23,17 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-ink-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="h-10 w-10 rounded-md bg-pine-700 flex items-center justify-center mb-3">
+          <div className="h-10 w-10 rounded-md bg-gradient-to-b from-pine-500 to-pine-700 flex items-center justify-center mb-3 shadow-soft">
             <Film className="h-5 w-5 text-white" />
           </div>
           <h1 className="text-lg font-semibold text-ink-900">Content Team Tracker</h1>
           <p className="text-sm text-ink-500 mt-1">Sign in to log or review production</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white border border-ink-100 rounded-card shadow-card p-6 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="bg-white border border-ink-100 rounded-xl2 shadow-soft p-6 flex flex-col gap-4">
           <Field label="Email" htmlFor="email" required>
             <Input
               id="email"
