@@ -1,0 +1,340 @@
+import { useEffect, useMemo, useState } from 'react'
+import Papa from 'papaparse'
+import { Download, Upload } from 'lucide-react'
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
+import { supabase } from '../lib/supabase'
+import { useToast } from '../contexts/ToastContext'
+import { Button, Card, Field, Input, PageSpinner, Select } from '../components/ui/primitives'
+import { PRODUCTION_FIELDS, totalItems, type Client, type Profile, type ProductionLogWithRelations } from '../types/database'
+import { startOfMonthISO, todayISO } from '../lib/utils'
+
+const COLORS = ['#177566', '#D2920F', '#C65D4C', '#727872', '#3DA491', '#B5790A']
+
+export default function Reports() {
+  const { toast } = useToast()
+  const [dateFrom, setDateFrom] = useState(startOfMonthISO())
+  const [dateTo, setDateTo] = useState(todayISO())
+  const [logs, setLogs] = useState<ProductionLogWithRelations[]>([])
+  const [clients, setClients] = useState<Client[]>([])
+  const [loading, setLoading] = useState(true)
+  const [importing, setImporting] = useState(false)
+
+  async function load() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('production_logs')
+      .select('*, client:clients(id, name, status), profile:profiles(id, full_name, email)')
+      .gte('production_date', dateFrom)
+      .lte('production_date', dateTo)
+      .order('production_date')
+    setLogs((data ?? []) as unknown as ProductionLogWithRelations[])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo])
+
+  useEffect(() => {
+    supabase.from('clients').select('*').then(({ data }) => setClients((data ?? []) as Client[]))
+  }, [])
+
+  const byAssistant = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const l of logs) {
+      const name = l.profile?.full_name ?? 'Unknown'
+      map.set(name, (map.get(name) ?? 0) + totalItems(l))
+    }
+    return Array.from(map, ([name, total]) => ({ name, total }))
+  }, [logs])
+
+  const byClient = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const l of logs) {
+      const name = l.client?.name ?? 'Unknown'
+      map.set(name, (map.get(name) ?? 0) + totalItems(l))
+    }
+    return Array.from(map, ([name, total]) => ({ name, total }))
+  }, [logs])
+
+  const byContentType = useMemo(() => {
+    return PRODUCTION_FIELDS.map((f) => ({
+      name: f.label,
+      value: logs.reduce((sum, l) => sum + ((l as any)[f.countKey] ?? 0), 0),
+    })).filter((d) => d.value > 0)
+  }, [logs])
+
+  const overTime = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const l of logs) {
+      map.set(l.production_date, (map.get(l.production_date) ?? 0) + totalItems(l))
+    }
+    return Array.from(map, ([date, total]) => ({ date, total })).sort((a, b) => a.date.localeCompare(b.date))
+  }, [logs])
+
+  const statusSplit = useMemo(() => {
+    let completed = 0
+    let inProgress = 0
+    for (const l of logs) {
+      for (const f of PRODUCTION_FIELDS) {
+        const count = (l as any)[f.countKey] ?? 0
+        if ((l as any)[f.statusKey] === 'completed') completed += count
+        else inProgress += count
+      }
+    }
+    return [
+      { name: 'Completed', value: completed },
+      { name: 'In Progress', value: inProgress },
+    ]
+  }, [logs])
+
+  function exportCsv() {
+    const rows = logs.map((l) => ({
+      Date: l.production_date,
+      Assistant: l.profile?.full_name ?? '',
+      Client: l.client?.name ?? '',
+      ...Object.fromEntries(PRODUCTION_FIELDS.map((f) => [f.label, (l as any)[f.countKey]])),
+      'Total Items': totalItems(l),
+    }))
+    const csv = Papa.unparse(rows)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `report-${dateFrom}-to-${dateTo}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function handleImport(file: File) {
+    setImporting(true)
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const rows = results.data as Record<string, string>[]
+        let imported = 0
+        let skipped = 0
+
+        // Build a client name -> id map, creating missing clients as we go.
+        const clientMap = new Map(clients.map((c) => [c.name.trim().toLowerCase(), c.id]))
+
+        for (const row of rows) {
+          const clientName = (row['Client Name'] || row['Client'] || '').trim()
+          const dateRaw = (row['Date'] || '').trim()
+          const assistantName = (row['Assistant'] || row['Editor'] || '').trim()
+          if (!clientName || !dateRaw || !assistantName) {
+            skipped++
+            continue
+          }
+
+          let clientId = clientMap.get(clientName.toLowerCase())
+          if (!clientId) {
+            const { data: newClient } = await supabase
+              .from('clients')
+              .insert({ name: clientName, status: 'active' })
+              .select()
+              .single()
+            if (newClient) {
+              clientId = newClient.id
+              clientMap.set(clientName.toLowerCase(), newClient.id)
+            }
+          }
+
+          const { data: assistant } = await supabase
+            .from('profiles')
+            .select('id')
+            .ilike('full_name', assistantName)
+            .maybeSingle()
+
+          if (!clientId || !assistant) {
+            skipped++
+            continue
+          }
+
+          const parseCount = (v?: string) => Math.max(0, parseInt(v || '0', 10) || 0)
+          const parseStatus = (v?: string) => (v?.trim() === 'X' ? 'completed' : v?.trim() === '/' ? 'in_progress' : 'completed')
+
+          await supabase.from('production_logs').insert({
+            user_id: assistant.id,
+            client_id: clientId,
+            production_date: dateRaw,
+            videos_edited_count: parseCount(row['Videos Edited']),
+            videos_edited_status: parseStatus(row['Videos Edited Checked']),
+            videos_reedited_count: parseCount(row['Videos Re-edited']),
+            videos_reedited_status: parseStatus(row['Videos Re-edited Checked']),
+            carousels_edited_count: parseCount(row['Carousels Edited']),
+            carousels_edited_status: parseStatus(row['Carousels Edited Checked']),
+            carousels_reedited_count: parseCount(row['Carousels Re-edited']),
+            carousels_reedited_status: parseStatus(row['Carousels Re-edited Checked']),
+            text_posts_prepared_count: parseCount(row['Text Posts Prepared']),
+            text_posts_prepared_status: parseStatus(row['Text Posts Prepared Checked']),
+            text_posts_reedited_count: parseCount(row['Text Posts Re-edited']),
+            text_posts_reedited_status: parseStatus(row['Text Posts Re-edited Checked']),
+          })
+          imported++
+        }
+
+        setImporting(false)
+        toast(`Imported ${imported} rows${skipped ? `, skipped ${skipped}` : ''}.`, imported ? 'success' : 'error')
+        load()
+      },
+      error: () => {
+        setImporting(false)
+        toast('Could not parse that CSV file.', 'error')
+      },
+    })
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-ink-900">Reports</h1>
+          <p className="text-sm text-ink-500 mt-1">Production breakdowns for the selected period.</p>
+        </div>
+        <div className="flex gap-2">
+          <label className="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-medium rounded-md border border-ink-200 bg-white text-ink-800 hover:bg-ink-50 cursor-pointer">
+            <input
+              type="file"
+              accept=".csv"
+              className="hidden"
+              disabled={importing}
+              onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])}
+            />
+            <Upload className="h-4 w-4" />
+            {importing ? 'Importing…' : 'Import CSV'}
+          </label>
+          <Button variant="secondary" onClick={exportCsv} disabled={logs.length === 0}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <div className="p-4 flex flex-wrap gap-4 items-end">
+          <Field label="From">
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          </Field>
+          <Field label="To">
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          </Field>
+          <Field label="Quick range">
+            <Select
+              onChange={(e) => {
+                const v = e.target.value
+                const to = todayISO()
+                if (v === 'month') setDateFrom(startOfMonthISO())
+                if (v === 'today') setDateFrom(to)
+                setDateTo(to)
+              }}
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Choose…
+              </option>
+              <option value="today">Today</option>
+              <option value="month">This Month</option>
+            </Select>
+          </Field>
+        </div>
+      </Card>
+
+      {loading ? (
+        <PageSpinner />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <ChartCard title="Production by Assistant">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={byAssistant}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="total" fill="#177566" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title="Production by Client">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={byClient}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="total" fill="#3DA491" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title="Production by Content Type">
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie data={byContentType} dataKey="value" nameKey="name" outerRadius={90} label>
+                  {byContentType.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title="Completed vs In Progress">
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie data={statusSplit} dataKey="value" nameKey="name" outerRadius={90} label>
+                  <Cell fill="#177566" />
+                  <Cell fill="#D2920F" />
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title="Production Over Time" className="lg:col-span-2">
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={overTime}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                <Tooltip />
+                <Line type="monotone" dataKey="total" stroke="#177566" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ChartCard({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
+  return (
+    <Card className={className}>
+      <div className="p-5">
+        <h3 className="text-sm font-semibold text-ink-800 mb-3">{title}</h3>
+        {children}
+      </div>
+    </Card>
+  )
+}
