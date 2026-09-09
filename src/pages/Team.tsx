@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { Plus, Pencil, UserX, UserCheck } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, createIsolatedAuthClient } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import { Badge, Button, Card, EmptyState, Field, Input, PageSpinner, Select } from '../components/ui/primitives'
 import { Dialog, ConfirmDialog } from '../components/ui/dialog'
@@ -154,19 +154,38 @@ function AddMemberDialog({ open, onClose, onSaved }: { open: boolean; onClose: (
   const [role, setRole] = useState<UserRole>('assistant')
   const [saving, setSaving] = useState(false)
 
+  // Stays mounted while only `open` toggles, so reset fields every time it
+  // opens (covers both "cancelled last time" and "just added someone").
+  useEffect(() => {
+    if (open) {
+      setFullName('')
+      setEmail('')
+      setPassword('')
+      setRole('assistant')
+    }
+  }, [open])
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setSaving(true)
-    // Admin-created accounts: sign the user up, then set their profile role.
-    // Note: this uses the public signUp flow, which requires "Confirm email" to be
-    // disabled in Supabase Auth settings for instant access, OR the assistant
-    // confirms via the email Supabase sends. See README for the recommended
-    // approach using a Supabase Edge Function + service role for silent admin creation.
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    // Admin-created accounts: sign the user up on a throwaway, non-persisting
+    // client (see createIsolatedAuthClient) so this doesn't swap out the
+    // admin's own session for the new member's — then set their profile role
+    // with the admin's still-active session.
+    // Note: this uses the public signUp flow, which requires "Confirm email"
+    // to be disabled in Supabase Auth settings for instant access, OR the
+    // assistant confirms via the email Supabase sends.
+    const authClient = createIsolatedAuthClient()
+    const { data, error } = await authClient.auth.signUp({ email, password })
     if (error || !data.user) {
       toast(`Couldn't create account: ${error?.message ?? 'unknown error'}`, 'error')
       setSaving(false)
       return
+    }
+    // Immediately drop the throwaway session now that the account exists —
+    // we only needed it to run signUp without touching the admin's session.
+    if (data.session) {
+      await authClient.auth.signOut()
     }
     const { error: profileError } = await supabase
       .from('profiles')

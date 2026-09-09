@@ -113,6 +113,17 @@ function ClientDialog({
   const [status, setStatus] = useState<ClientStatus>(client?.status ?? 'active')
   const [saving, setSaving] = useState(false)
 
+  // This dialog stays mounted (only `open` toggles) for the "Add Client"
+  // case, so without this its fields would keep whatever was last typed —
+  // including after a successful add or a cancel. Re-sync to fresh
+  // defaults (or the client being edited) every time it's opened.
+  useEffect(() => {
+    if (open) {
+      setName(client?.name ?? '')
+      setStatus(client?.status ?? 'active')
+    }
+  }, [open, client])
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setSaving(true)
