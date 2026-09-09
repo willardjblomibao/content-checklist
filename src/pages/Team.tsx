@@ -175,6 +175,13 @@ function AddMemberDialog({ open, onClose, onSaved }: { open: boolean; onClose: (
     // Note: this uses the public signUp flow, which requires "Confirm email"
     // to be disabled in Supabase Auth settings for instant access, OR the
     // assistant confirms via the email Supabase sends.
+
+    // Belt-and-suspenders: snapshot the admin's own session up front so we
+    // can force-restore it on the shared client afterward, no matter what.
+    const {
+      data: { session: adminSession },
+    } = await supabase.auth.getSession()
+
     const authClient = createIsolatedAuthClient()
     const { data, error } = await authClient.auth.signUp({ email, password })
     if (error || !data.user) {
@@ -187,6 +194,17 @@ function AddMemberDialog({ open, onClose, onSaved }: { open: boolean; onClose: (
     if (data.session) {
       await authClient.auth.signOut()
     }
+
+    // Force-restore the admin's session on the shared client. If nothing
+    // ever touched it, this is a harmless no-op; if anything did, this
+    // guarantees the admin ends up back in their own account.
+    if (adminSession) {
+      await supabase.auth.setSession({
+        access_token: adminSession.access_token,
+        refresh_token: adminSession.refresh_token,
+      })
+    }
+
     const { error: profileError } = await supabase
       .from('profiles')
       .update({ full_name: fullName, role })

@@ -24,14 +24,22 @@ import { startOfMonthISO, todayISO } from '../lib/utils'
 
 const COLORS = ['#177566', '#D2920F', '#3DA491', '#B5790A', '#7BC2B4', '#0F4F44']
 
+type StatusFilter = '' | 'completed' | 'in_progress'
+
 export default function Reports() {
   const { toast } = useToast()
   const [dateFrom, setDateFrom] = useState(startOfMonthISO())
   const [dateTo, setDateTo] = useState(todayISO())
   const [logs, setLogs] = useState<ProductionLogWithRelations[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [assistants, setAssistants] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
+
+  const [filterClient, setFilterClient] = useState('')
+  const [filterAssistant, setFilterAssistant] = useState('')
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>('')
+  const [filterContentType, setFilterContentType] = useState('')
 
   async function load() {
     setLoading(true)
@@ -51,48 +59,80 @@ export default function Reports() {
   }, [dateFrom, dateTo])
 
   useEffect(() => {
-    supabase.from('clients').select('*').then(({ data }) => setClients((data ?? []) as Client[]))
+    supabase.from('clients').select('*').order('name').then(({ data }) => setClients((data ?? []) as Client[]))
+    supabase
+      .from('profiles')
+      .select('*')
+      .order('full_name')
+      .then(({ data }) => setAssistants((data ?? []) as Profile[]))
   }, [])
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter((l) => {
+      if (filterClient && l.client_id !== filterClient) return false
+      if (filterAssistant && l.user_id !== filterAssistant) return false
+      if (filterContentType && ((l as any)[filterContentType] ?? 0) === 0) return false
+      if (filterStatus) {
+        // Only fields with items logged have a meaningful status.
+        const loggedFields = PRODUCTION_FIELDS.filter((f) => ((l as any)[f.countKey] ?? 0) > 0)
+        if (loggedFields.length === 0) return false
+        const anyInProgress = loggedFields.some((f) => (l as any)[f.statusKey] === 'in_progress')
+        if (filterStatus === 'in_progress' && !anyInProgress) return false
+        if (filterStatus === 'completed' && anyInProgress) return false
+      }
+      return true
+    })
+  }, [logs, filterClient, filterAssistant, filterStatus, filterContentType])
+
+  const hasActiveFilters = !!(filterClient || filterAssistant || filterStatus || filterContentType)
+
+  function clearFilters() {
+    setFilterClient('')
+    setFilterAssistant('')
+    setFilterStatus('')
+    setFilterContentType('')
+  }
 
   const byAssistant = useMemo(() => {
     const map = new Map<string, number>()
-    for (const l of logs) {
+    for (const l of filteredLogs) {
       const name = l.profile?.full_name ?? 'Unknown'
       map.set(name, (map.get(name) ?? 0) + totalItems(l))
     }
     return Array.from(map, ([name, total]) => ({ name, total }))
-  }, [logs])
+  }, [filteredLogs])
 
   const byClient = useMemo(() => {
     const map = new Map<string, number>()
-    for (const l of logs) {
+    for (const l of filteredLogs) {
       const name = l.client?.name ?? 'Unknown'
       map.set(name, (map.get(name) ?? 0) + totalItems(l))
     }
     return Array.from(map, ([name, total]) => ({ name, total }))
-  }, [logs])
+  }, [filteredLogs])
 
   const byContentType = useMemo(() => {
     return PRODUCTION_FIELDS.map((f) => ({
       name: f.label,
-      value: logs.reduce((sum, l) => sum + ((l as any)[f.countKey] ?? 0), 0),
+      value: filteredLogs.reduce((sum, l) => sum + ((l as any)[f.countKey] ?? 0), 0),
     })).filter((d) => d.value > 0)
-  }, [logs])
+  }, [filteredLogs])
 
   const overTime = useMemo(() => {
     const map = new Map<string, number>()
-    for (const l of logs) {
+    for (const l of filteredLogs) {
       map.set(l.production_date, (map.get(l.production_date) ?? 0) + totalItems(l))
     }
     return Array.from(map, ([date, total]) => ({ date, total })).sort((a, b) => a.date.localeCompare(b.date))
-  }, [logs])
+  }, [filteredLogs])
 
   const statusSplit = useMemo(() => {
     let completed = 0
     let inProgress = 0
-    for (const l of logs) {
+    for (const l of filteredLogs) {
       for (const f of PRODUCTION_FIELDS) {
         const count = (l as any)[f.countKey] ?? 0
+        if (count === 0) continue
         if ((l as any)[f.statusKey] === 'completed') completed += count
         else inProgress += count
       }
@@ -101,7 +141,7 @@ export default function Reports() {
       { name: 'Completed', value: completed },
       { name: 'In Progress', value: inProgress },
     ]
-  }, [logs])
+  }, [filteredLogs])
 
   const completionPct = useMemo(() => {
     const [completed, inProgress] = statusSplit
@@ -110,7 +150,7 @@ export default function Reports() {
   }, [statusSplit])
 
   function exportCsv() {
-    const rows = logs.map((l) => ({
+    const rows = filteredLogs.map((l) => ({
       Date: l.production_date,
       Assistant: l.profile?.full_name ?? '',
       Client: l.client?.name ?? '',
@@ -226,7 +266,7 @@ export default function Reports() {
             <Upload className="h-4 w-4" />
             {importing ? 'Importing…' : 'Import CSV'}
           </label>
-          <Button variant="secondary" onClick={exportCsv} disabled={logs.length === 0}>
+          <Button variant="secondary" onClick={exportCsv} disabled={filteredLogs.length === 0}>
             <Download className="h-4 w-4" />
             Export CSV
           </Button>
@@ -260,10 +300,68 @@ export default function Reports() {
             </Select>
           </Field>
         </div>
+        <div className="px-4 pb-4 pt-1 border-t border-ink-100 flex flex-wrap gap-4 items-end">
+          <Field label="Client">
+            <Select value={filterClient} onChange={(e) => setFilterClient(e.target.value)}>
+              <option value="">All clients</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Assistant">
+            <Select value={filterAssistant} onChange={(e) => setFilterAssistant(e.target.value)}>
+              <option value="">All assistants</option>
+              {assistants.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.full_name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Content Type">
+            <Select value={filterContentType} onChange={(e) => setFilterContentType(e.target.value)}>
+              <option value="">All content types</option>
+              {PRODUCTION_FIELDS.map((f) => (
+                <option key={f.countKey} value={f.countKey}>
+                  {f.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Status">
+            <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}>
+              <option value="">All statuses</option>
+              <option value="completed">Completed</option>
+              <option value="in_progress">In Progress</option>
+            </Select>
+          </Field>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" type="button" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </div>
       </Card>
 
       {loading ? (
         <PageSpinner />
+      ) : filteredLogs.length === 0 ? (
+        <Card>
+          <div className="p-10 text-center text-sm text-ink-500">
+            No entries match the selected filters.
+            {hasActiveFilters && (
+              <>
+                {' '}
+                <button className="text-pine-700 font-medium hover:underline" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              </>
+            )}
+          </div>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <ChartCard title="Production by Assistant">

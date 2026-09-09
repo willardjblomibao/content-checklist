@@ -105,8 +105,9 @@ export default function AssistantDashboard() {
           ) : (
             <div className="divide-y divide-ink-100">
               {recent.map((log) => {
-                const total = PRODUCTION_FIELDS.reduce((sum, f) => sum + ((log as any)[f.countKey] ?? 0), 0)
-                const anyInProgress = PRODUCTION_FIELDS.some((f) => (log as any)[f.statusKey] === 'in_progress')
+                const loggedFields = PRODUCTION_FIELDS.filter((f) => ((log as any)[f.countKey] ?? 0) > 0)
+                const total = loggedFields.reduce((sum, f) => sum + ((log as any)[f.countKey] ?? 0), 0)
+                const anyInProgress = loggedFields.some((f) => (log as any)[f.statusKey] === 'in_progress')
                 return (
                   <div key={log.id} className="flex items-center justify-between px-5 py-3.5">
                     <div className="min-w-0">
@@ -115,7 +116,11 @@ export default function AssistantDashboard() {
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-sm font-semibold text-ink-800">{total} items</span>
-                      <Badge variant={anyInProgress ? 'in_progress' : 'completed'} />
+                      {loggedFields.length === 0 ? (
+                        <Badge variant="neutral">No items</Badge>
+                      ) : (
+                        <Badge variant={anyInProgress ? 'in_progress' : 'completed'} />
+                      )}
                     </div>
                   </div>
                 )

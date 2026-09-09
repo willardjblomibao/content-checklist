@@ -154,7 +154,10 @@ export default function History() {
                 <tbody>
                   {logs.map((log) => {
                     const canEdit = isAdmin || log.user_id === profile?.id
-                    const anyInProgress = PRODUCTION_FIELDS.some((f) => (log as any)[f.statusKey] === 'in_progress')
+                    // Only fields that actually have items logged count toward
+                    // the status — a 0-count field has no meaningful status.
+                    const loggedFields = PRODUCTION_FIELDS.filter((f) => ((log as any)[f.countKey] ?? 0) > 0)
+                    const anyInProgress = loggedFields.some((f) => (log as any)[f.statusKey] === 'in_progress')
                     return (
                       <tr key={log.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
                         <td className="px-5 py-3 whitespace-nowrap text-ink-800">{formatDate(log.production_date)}</td>
@@ -165,7 +168,11 @@ export default function History() {
                         <td className="px-3 py-3 whitespace-nowrap text-ink-700">{log.client?.name ?? '—'}</td>
                         <td className="px-3 py-3 text-right font-semibold text-ink-900">{totalItems(log)}</td>
                         <td className="px-3 py-3">
-                          <Badge variant={anyInProgress ? 'in_progress' : 'completed'} />
+                          {loggedFields.length === 0 ? (
+                            <Badge variant="neutral">No items</Badge>
+                          ) : (
+                            <Badge variant={anyInProgress ? 'in_progress' : 'completed'} />
+                          )}
                         </td>
                         <td className="px-5 py-3">
                           <div className="flex justify-end gap-1">

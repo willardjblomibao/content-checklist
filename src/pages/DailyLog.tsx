@@ -184,29 +184,41 @@ export default function DailyLog() {
             <h2 className="text-sm font-semibold text-ink-800">Production</h2>
           </CardHeader>
           <CardContent className="mt-4 flex flex-col divide-y divide-ink-100">
-            {PRODUCTION_FIELDS.map((f) => (
-              <div key={f.countKey} className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-3 items-end first:pt-0 last:pb-0">
-                <Field label={f.label}>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={form[f.countKey]}
-                    onChange={(e) => updateField(f.countKey, Math.max(0, parseInt(e.target.value || '0', 10)))}
-                  />
-                </Field>
-                <Field label="Status" htmlFor={f.statusKey}>
-                  <Select
-                    id={f.statusKey}
-                    value={form[f.statusKey]}
-                    onChange={(e) => updateField(f.statusKey, e.target.value as ProductionStatus)}
-                  >
-                    <option value="completed">Completed</option>
-                    <option value="in_progress">In Progress</option>
-                  </Select>
-                </Field>
-              </div>
-            ))}
+            {PRODUCTION_FIELDS.map((f) => {
+              const hasCount = form[f.countKey] > 0
+              return (
+                <div key={f.countKey} className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-3 items-end first:pt-0 last:pb-0">
+                  <Field label={f.label}>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={form[f.countKey]}
+                      onChange={(e) => updateField(f.countKey, Math.max(0, parseInt(e.target.value || '0', 10)))}
+                    />
+                  </Field>
+                  <Field label="Status" htmlFor={f.statusKey}>
+                    {hasCount ? (
+                      <Select
+                        id={f.statusKey}
+                        value={form[f.statusKey]}
+                        onChange={(e) => updateField(f.statusKey, e.target.value as ProductionStatus)}
+                      >
+                        <option value="completed">Completed</option>
+                        <option value="in_progress">In Progress</option>
+                      </Select>
+                    ) : (
+                      <div
+                        id={f.statusKey}
+                        className="h-9 flex items-center px-3 text-sm text-ink-400 bg-ink-50 border border-ink-100 rounded-md"
+                      >
+                        No status
+                      </div>
+                    )}
+                  </Field>
+                </div>
+              )
+            })}
           </CardContent>
         </Card>
 
