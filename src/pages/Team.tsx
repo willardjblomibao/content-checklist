@@ -207,7 +207,7 @@ function AddMemberDialog({ open, onClose, onSaved }: { open: boolean; onClose: (
 
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ full_name: fullName, role })
+      .update({ full_name: fullName, role, must_change_password: true })
       .eq('id', data.user.id)
 
     setSaving(false)
@@ -233,7 +233,7 @@ function AddMemberDialog({ open, onClose, onSaved }: { open: boolean; onClose: (
         <Field label="Email" required>
           <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
-        <Field label="Temporary Password" required hint="They can change this after logging in.">
+        <Field label="Temporary Password" required hint="They'll be prompted to change this as soon as they log in.">
           <Input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         <Field label="Role">

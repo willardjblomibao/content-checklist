@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react'
+import { KeyRound } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
@@ -34,11 +35,15 @@ export default function Settings() {
     }
     setSavingPassword(true)
     const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (!error && profile?.must_change_password) {
+      await supabase.from('profiles').update({ must_change_password: false }).eq('id', profile.id)
+    }
     setSavingPassword(false)
     if (error) toast(`Couldn't update password: ${error.message}`, 'error')
     else {
       toast('Password updated.', 'success')
       setNewPassword('')
+      refreshProfile()
     }
   }
 
@@ -80,6 +85,12 @@ export default function Settings() {
           <h2 className="text-sm font-semibold text-ink-800">Password</h2>
         </CardHeader>
         <CardContent>
+          {profile?.must_change_password && (
+            <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+              <KeyRound className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>You're still using the temporary password an admin set for you. Please set your own now.</span>
+            </div>
+          )}
           <form onSubmit={changePassword} className="flex flex-col gap-4 mt-2">
             <Field label="New Password" hint="At least 6 characters.">
               <Input

@@ -9,6 +9,7 @@ export interface Profile {
   email: string
   role: UserRole
   status: MemberStatus
+  must_change_password: boolean
   created_at: string
   updated_at: string
 }

@@ -36,9 +36,16 @@ create table if not exists public.profiles (
   email text not null,
   role user_role not null default 'assistant',
   status member_status not null default 'active',
+  must_change_password boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Migration for already-deployed projects: adds the column without
+-- retroactively flagging existing users (defaults to false for rows that
+-- already exist). New accounts created via the "Add Member" admin flow
+-- explicitly set this to true from the app.
+alter table public.profiles add column if not exists must_change_password boolean not null default false;
 
 -- clients
 create table if not exists public.clients (

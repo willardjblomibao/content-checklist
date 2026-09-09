@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { Menu, X, Film } from 'lucide-react'
 import { Sidebar } from './Sidebar'
+import { PasswordReminderBanner } from './PasswordReminderBanner'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn } from '../../lib/utils'
 
@@ -80,8 +81,9 @@ export function AppLayout() {
         </div>
       )}
 
-      <main className="flex-1 min-w-0 pt-14 md:pt-0">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-8">
+      <main className="flex-1 min-w-0 pt-14 md:pt-0 flex flex-col">
+        <PasswordReminderBanner />
+        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 md:py-8">
           <Outlet />
         </div>
       </main>
