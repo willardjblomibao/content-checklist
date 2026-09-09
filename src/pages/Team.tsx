@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { Plus, Pencil, UserX, UserCheck } from 'lucide-react'
 import { supabase, createIsolatedAuthClient } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
+import { usePresence } from '../contexts/PresenceContext'
 import { Badge, Button, Card, EmptyState, Field, Input, PageSpinner, Select } from '../components/ui/primitives'
 import { Dialog, ConfirmDialog } from '../components/ui/dialog'
 import type { Profile, UserRole } from '../types/database'
@@ -11,6 +12,7 @@ type MemberTotals = Record<string, number>
 
 export default function Team() {
   const { toast } = useToast()
+  const { onlineUserIds } = usePresence()
   const [members, setMembers] = useState<Profile[]>([])
   const [totals, setTotals] = useState<MemberTotals>({})
   const [loading, setLoading] = useState(true)
@@ -61,7 +63,13 @@ export default function Team() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-ink-900">Team</h1>
-          <p className="text-sm text-ink-500 mt-1">Manage assistants and admins.</p>
+          <p className="text-sm text-ink-500 mt-1 flex items-center gap-2 flex-wrap">
+            <span>Manage assistants and admins.</span>
+            <span className="inline-flex items-center gap-1.5 text-pine-700 font-medium">
+              <span className="h-1.5 w-1.5 rounded-full bg-pine-500" />
+              {members.filter((m) => onlineUserIds.has(m.id)).length} online now
+            </span>
+          </p>
         </div>
         <Button onClick={() => setShowAdd(true)}>
           <Plus className="h-4 w-4" />
@@ -91,7 +99,18 @@ export default function Team() {
               <tbody>
                 {members.map((m) => (
                   <tr key={m.id} className="border-b border-ink-50 last:border-0">
-                    <td className="px-5 py-3 font-medium text-ink-900 whitespace-nowrap">{m.full_name}</td>
+                    <td className="px-5 py-3 font-medium text-ink-900 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className={`h-2 w-2 rounded-full shrink-0 ${
+                            onlineUserIds.has(m.id) ? 'bg-pine-500' : 'bg-ink-200'
+                          }`}
+                          title={onlineUserIds.has(m.id) ? 'Online' : 'Offline'}
+                          aria-hidden="true"
+                        />
+                        {m.full_name}
+                      </span>
+                    </td>
                     <td className="px-3 py-3 text-ink-600 whitespace-nowrap">{m.email}</td>
                     <td className="px-3 py-3">
                       <Badge variant={m.role === 'admin' ? 'admin' : 'assistant'} />

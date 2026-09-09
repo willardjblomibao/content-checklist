@@ -4,6 +4,7 @@ import { Menu, X, Film } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { PasswordReminderBanner } from './PasswordReminderBanner'
 import { useAuth } from '../../contexts/AuthContext'
+import { PresenceProvider } from '../../contexts/PresenceContext'
 import { cn } from '../../lib/utils'
 
 export function AppLayout() {
@@ -28,7 +29,8 @@ export function AppLayout() {
       ]
 
   return (
-    <div className="flex min-h-screen bg-canvas">
+    <PresenceProvider>
+      <div className="flex min-h-screen bg-canvas">
       <Sidebar />
 
       {/* Mobile topbar */}
@@ -88,5 +90,6 @@ export function AppLayout() {
         </div>
       </main>
     </div>
+    </PresenceProvider>
   )
 }

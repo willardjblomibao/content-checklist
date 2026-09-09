@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { usePresence } from '../contexts/PresenceContext'
 import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/KpiCards'
 import { Button, Card, EmptyState, PageSpinner } from '../components/ui/primitives'
 import { PRODUCTION_FIELDS, type Profile, type ProductionLogWithRelations } from '../types/database'
@@ -15,6 +16,7 @@ function rangeToDates(range: RangeKey): { from: string; to: string } {
 }
 
 export default function AdminDashboard() {
+  const { onlineUserIds } = usePresence()
   const [range, setRange] = useState<RangeKey>('today')
   const [logs, setLogs] = useState<ProductionLogWithRelations[]>([])
   const [team, setTeam] = useState<Profile[]>([])
@@ -96,7 +98,13 @@ export default function AdminDashboard() {
           <KpiCards totals={totals} />
 
           <div>
-            <h2 className="text-sm font-semibold text-ink-700 mb-3">Individual Performance</h2>
+            <h2 className="text-sm font-semibold text-ink-700 mb-3 flex items-center gap-2">
+              Individual Performance
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-pine-700 bg-pine-50 px-2 py-0.5 rounded-full">
+                <span className="h-1.5 w-1.5 rounded-full bg-pine-500" />
+                {team.filter((m) => onlineUserIds.has(m.id)).length} online
+              </span>
+            </h2>
             <Card className="overflow-hidden">
               {perAssistant.length === 0 ? (
                 <EmptyState
@@ -120,7 +128,18 @@ export default function AdminDashboard() {
                     <tbody>
                       {perAssistant.map(({ member, totalsRow, total }) => (
                         <tr key={member.id} className="border-b border-ink-50 last:border-0">
-                          <td className="px-5 py-3 font-medium text-ink-900 whitespace-nowrap">{member.full_name}</td>
+                          <td className="px-5 py-3 font-medium text-ink-900 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-2">
+                              <span
+                                className={`h-2 w-2 rounded-full shrink-0 ${
+                                  onlineUserIds.has(member.id) ? 'bg-pine-500' : 'bg-ink-200'
+                                }`}
+                                title={onlineUserIds.has(member.id) ? 'Online' : 'Offline'}
+                                aria-hidden="true"
+                              />
+                              {member.full_name}
+                            </span>
+                          </td>
                           {PRODUCTION_FIELDS.map((f) => (
                             <td key={f.countKey} className="px-3 py-3 text-right text-ink-600">
                               {totalsRow[f.countKey]}
