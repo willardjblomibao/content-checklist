@@ -1,17 +1,29 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Film } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { Button, Field, Input } from '../components/ui/primitives'
 
 export default function Login() {
-  const { session, signIn, loading: authLoading } = useAuth()
+  const { session, profile, signIn, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  if (!authLoading && session) return <Navigate to="/" replace />
+  useEffect(() => {
+    if (sessionStorage.getItem('deactivated_notice')) {
+      sessionStorage.removeItem('deactivated_notice')
+      setError('Your account has been deactivated. Contact your admin for access.')
+    }
+  }, [])
+
+  // Only bounce away to "/" once we actually know this is a live, active
+  // account. Redirecting on "session exists" alone — before the profile
+  // has loaded, or for a deactivated account — is what causes a redirect
+  // loop with ProtectedRoute (which sends inactive/unknown accounts right
+  // back here). See ProtectedRoute.tsx for the other half of this fix.
+  if (!authLoading && session && profile?.status === 'active') return <Navigate to="/" replace />
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()

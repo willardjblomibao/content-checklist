@@ -81,9 +81,14 @@ create table if not exists public.production_logs (
   text_posts_reedited_count integer not null default 0 check (text_posts_reedited_count >= 0),
   text_posts_reedited_status production_status not null default 'completed',
 
+  notes text,
+
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Migration for already-deployed projects.
+alter table public.production_logs add column if not exists notes text;
 
 -- ---------------------------------------------------------------------
 -- 4. Indexes

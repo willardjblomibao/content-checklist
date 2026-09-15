@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { Button, Card, CardContent, CardHeader, Field, Input, Select, PageSpinner } from '../components/ui/primitives'
+import { Button, Card, CardContent, CardHeader, Field, Input, Select, Textarea, PageSpinner } from '../components/ui/primitives'
 import { PRODUCTION_FIELDS, totalItems, type Client, type ProductionStatus } from '../types/database'
 import { dayOfWeek, todayISO } from '../lib/utils'
 
@@ -22,6 +22,7 @@ type FormState = {
   text_posts_prepared_status: ProductionStatus
   text_posts_reedited_count: number
   text_posts_reedited_status: ProductionStatus
+  notes: string
 }
 
 const emptyForm: FormState = {
@@ -39,6 +40,7 @@ const emptyForm: FormState = {
   text_posts_prepared_status: 'completed',
   text_posts_reedited_count: 0,
   text_posts_reedited_status: 'completed',
+  notes: '',
 }
 
 export default function DailyLog() {
@@ -88,6 +90,7 @@ export default function DailyLog() {
             text_posts_prepared_status: data.text_posts_prepared_status,
             text_posts_reedited_count: data.text_posts_reedited_count,
             text_posts_reedited_status: data.text_posts_reedited_status,
+            notes: data.notes ?? '',
           })
           setOwnerId(data.user_id)
         } else if (error) {
@@ -119,7 +122,7 @@ export default function DailyLog() {
     }
 
     setSaving(true)
-    const payload = { ...form, user_id: ownerId ?? profile.id }
+    const payload = { ...form, notes: form.notes.trim() || null, user_id: ownerId ?? profile.id }
 
     const { error } = editId
       ? await supabase.from('production_logs').update(payload).eq('id', editId)
@@ -226,6 +229,21 @@ export default function DailyLog() {
           <span className="text-sm font-medium text-ink-600">Total Items</span>
           <span className="text-2xl font-semibold text-ink-900">{runningTotal}</span>
         </div>
+
+        <Card>
+          <CardHeader className="pb-0">
+            <h2 className="text-sm font-semibold text-ink-800">Notes</h2>
+            <p className="text-xs text-ink-500 mt-0.5">Optional — anything worth flagging for this entry.</p>
+          </CardHeader>
+          <CardContent className="mt-3">
+            <Textarea
+              rows={3}
+              placeholder="e.g. client requested a re-cut on the intro, waiting on raw footage for Thursday…"
+              value={form.notes}
+              onChange={(e) => updateField('notes', e.target.value)}
+            />
+          </CardContent>
+        </Card>
 
         <div className="flex gap-3 justify-end">
           <Button type="button" variant="secondary" onClick={() => navigate(-1)}>

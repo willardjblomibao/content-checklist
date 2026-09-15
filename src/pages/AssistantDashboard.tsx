@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, StickyNote } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/KpiCards'
@@ -111,7 +111,14 @@ export default function AssistantDashboard() {
                 return (
                   <div key={log.id} className="flex items-center justify-between px-5 py-3.5">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-ink-900">{log.client?.name ?? 'Unknown client'}</p>
+                      <p className="text-sm font-medium text-ink-900 flex items-center gap-1.5">
+                        {log.client?.name ?? 'Unknown client'}
+                        {log.notes && (
+                          <StickyNote className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-label="Has notes">
+                            <title>{log.notes}</title>
+                          </StickyNote>
+                        )}
+                      </p>
                       <p className="text-xs text-ink-500 mt-0.5">{formatDate(log.production_date)}</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">

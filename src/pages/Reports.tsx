@@ -156,6 +156,7 @@ export default function Reports() {
       Client: l.client?.name ?? '',
       ...Object.fromEntries(PRODUCTION_FIELDS.map((f) => [f.label, (l as any)[f.countKey]])),
       'Total Items': totalItems(l),
+      Notes: l.notes ?? '',
     }))
     const csv = Papa.unparse(rows)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })

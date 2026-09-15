@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes, InputHTMLAttributes, LabelHTMLAttributes, ReactNode, SelectHTMLAttributes, forwardRef } from 'react'
+import { ButtonHTMLAttributes, InputHTMLAttributes, LabelHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes, forwardRef } from 'react'
 import { Loader2 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
@@ -132,6 +132,22 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
   )
 )
 Select.displayName = 'Select'
+
+// ---------- Textarea ----------
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  ({ className, ...props }, ref) => (
+    <textarea
+      ref={ref}
+      className={cn(
+        'w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 resize-y',
+        'focus:border-pine-500 disabled:bg-ink-50 disabled:text-ink-400',
+        className
+      )}
+      {...props}
+    />
+  )
+)
+Textarea.displayName = 'Textarea'
 
 // ---------- Field (label wrapper) ----------
 export function Field({

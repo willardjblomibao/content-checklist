@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Pencil, Trash2, ChevronLeft, ChevronRight, Download } from 'lucide-react'
+import { Pencil, Trash2, ChevronLeft, ChevronRight, Download, StickyNote } from 'lucide-react'
 import Papa from 'papaparse'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -71,6 +71,7 @@ export default function History() {
         PRODUCTION_FIELDS.map((f) => [f.label, (log as any)[f.countKey]])
       ),
       'Total Items': totalItems(log),
+      Notes: log.notes ?? '',
     }))
     const csv = Papa.unparse(rows)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -148,6 +149,7 @@ export default function History() {
                     <th className="px-3 py-3 whitespace-nowrap">Client</th>
                     <th className="px-3 py-3 text-right whitespace-nowrap">Total</th>
                     <th className="px-3 py-3 whitespace-nowrap">Status</th>
+                    <th className="px-3 py-3">Notes</th>
                     <th className="px-5 py-3 text-right whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
@@ -172,6 +174,16 @@ export default function History() {
                             <Badge variant="neutral">No items</Badge>
                           ) : (
                             <Badge variant={anyInProgress ? 'in_progress' : 'completed'} />
+                          )}
+                        </td>
+                        <td className="px-3 py-3 max-w-[220px]">
+                          {log.notes ? (
+                            <span className="flex items-start gap-1.5 text-ink-600" title={log.notes}>
+                              <StickyNote className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
+                              <span className="line-clamp-2">{log.notes}</span>
+                            </span>
+                          ) : (
+                            <span className="text-ink-300">—</span>
                           )}
                         </td>
                         <td className="px-5 py-3">

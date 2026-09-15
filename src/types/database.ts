@@ -39,6 +39,7 @@ export interface ProductionLog {
   text_posts_prepared_status: ProductionStatus
   text_posts_reedited_count: number
   text_posts_reedited_status: ProductionStatus
+  notes: string | null
   created_at: string
   updated_at: string
 }
