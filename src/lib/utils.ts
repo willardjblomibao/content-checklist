@@ -47,3 +47,28 @@ export function initials(name: string): string {
     .map((n) => n[0]?.toUpperCase())
     .join('')
 }
+
+/**
+ * Current streak of consecutive days with activity, counting backward from
+ * today. If today has no activity yet, that's not treated as "broken" —
+ * the streak is measured through yesterday instead, since today isn't over.
+ */
+export function computeStreak(countsByDate: Map<string, number>): number {
+  const cursor = new Date()
+  cursor.setHours(0, 0, 0, 0)
+
+  const todayIso = format(cursor, 'yyyy-MM-dd')
+  if ((countsByDate.get(todayIso) ?? 0) === 0) {
+    cursor.setDate(cursor.getDate() - 1)
+  }
+
+  let streak = 0
+  // Safety cap so a data/logic edge case can't spin forever.
+  for (let i = 0; i < 3650; i++) {
+    const iso = format(cursor, 'yyyy-MM-dd')
+    if ((countsByDate.get(iso) ?? 0) <= 0) break
+    streak++
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return streak
+}

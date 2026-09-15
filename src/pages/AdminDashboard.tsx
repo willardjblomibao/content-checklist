@@ -4,8 +4,9 @@ import { Plus, StickyNote } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { usePresence } from '../contexts/PresenceContext'
 import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/KpiCards'
+import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap'
 import { Button, Card, EmptyState, PageSpinner } from '../components/ui/primitives'
-import { PRODUCTION_FIELDS, type Profile, type ProductionLogWithRelations } from '../types/database'
+import { PRODUCTION_FIELDS, totalItems, type Profile, type ProductionLogWithRelations } from '../types/database'
 import { formatDate, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
 
 function rangeToDates(range: RangeKey): { from: string; to: string } {
@@ -21,6 +22,7 @@ export default function AdminDashboard() {
   const [logs, setLogs] = useState<ProductionLogWithRelations[]>([])
   const [team, setTeam] = useState<Profile[]>([])
   const [recentNotes, setRecentNotes] = useState<ProductionLogWithRelations[]>([])
+  const [heatmapLogs, setHeatmapLogs] = useState<ProductionLogWithRelations[]>([])
   const [loading, setLoading] = useState(true)
 
   const { from, to } = rangeToDates(range)
@@ -48,6 +50,26 @@ export default function AdminDashboard() {
       .limit(6)
       .then(({ data }) => setRecentNotes((data ?? []) as unknown as ProductionLogWithRelations[]))
   }, [])
+
+  useEffect(() => {
+    const start = new Date()
+    start.setDate(start.getDate() - 14 * 7)
+    supabase
+      .from('production_logs')
+      .select(
+        'production_date, videos_edited_count, videos_reedited_count, carousels_edited_count, carousels_reedited_count, text_posts_prepared_count, text_posts_reedited_count'
+      )
+      .gte('production_date', start.toISOString().slice(0, 10))
+      .then(({ data }) => setHeatmapLogs((data ?? []) as unknown as ProductionLogWithRelations[]))
+  }, [])
+
+  const heatmapCounts = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const log of heatmapLogs) {
+      map.set(log.production_date, (map.get(log.production_date) ?? 0) + totalItems(log))
+    }
+    return map
+  }, [heatmapLogs])
 
   useEffect(() => {
     setLoading(true)
@@ -111,6 +133,15 @@ export default function AdminDashboard() {
       ) : (
         <>
           <KpiCards totals={totals} />
+
+          <div>
+            <h2 className="text-sm font-semibold text-ink-700 mb-3">Team Activity</h2>
+            <Card>
+              <div className="p-5">
+                <ContributionHeatmap countsByDate={heatmapCounts} label="team items" />
+              </div>
+            </Card>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
