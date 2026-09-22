@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/KpiCards'
 import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap'
+import { StreakCard } from '../components/dashboard/StreakCard'
 import { Button, Card, EmptyState, PageSpinner, Badge } from '../components/ui/primitives'
 import { PRODUCTION_FIELDS, totalItems, type ProductionLogWithRelations } from '../types/database'
 import { formatDate, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
@@ -110,13 +111,19 @@ export default function AssistantDashboard() {
 
       {loading ? <PageSpinner /> : <KpiCards totals={totals} />}
 
-      <div>
-        <h2 className="text-sm font-semibold text-ink-700 mb-3">Your Activity</h2>
-        <Card>
-          <div className="p-5">
-            <ContributionHeatmap countsByDate={heatmapCounts} />
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        <div className="lg:col-span-2">
+          <h2 className="text-sm font-semibold text-ink-700 mb-3">Your Activity</h2>
+          <Card>
+            <div className="p-5">
+              <ContributionHeatmap countsByDate={heatmapCounts} />
+            </div>
+          </Card>
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold text-ink-700 mb-3">Your Streak</h2>
+          <StreakCard countsByDate={heatmapCounts} />
+        </div>
       </div>
 
       <div>
