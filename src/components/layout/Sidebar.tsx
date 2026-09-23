@@ -9,21 +9,37 @@ import {
   Settings,
   LogOut,
   Film,
+  TrendingUp,
+  Radio,
+  CalendarRange,
+  Activity,
+  FileDown,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn, initials } from '../../lib/utils'
 
-const assistantNav = [
+export const assistantNav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/daily-log', label: 'Daily Log', icon: PlusSquare },
   { to: '/history', label: 'History', icon: History },
+  { to: '/growth', label: 'Growth', icon: TrendingUp, end: true },
+  { to: '/growth/input', label: 'Weekly Growth', icon: PlusSquare },
+  { to: '/growth/monthly', label: 'Monthly Summary', icon: CalendarRange },
+  { to: '/growth/reports', label: 'Growth Reports', icon: FileDown },
+  { to: '/growth/activity', label: 'Activity Logs', icon: Activity },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-const adminNav = [
+export const adminNav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/daily-log', label: 'Daily Log', icon: PlusSquare },
   { to: '/history', label: 'History', icon: History },
+  { to: '/growth', label: 'Growth', icon: TrendingUp, end: true },
+  { to: '/growth/input', label: 'Weekly Growth', icon: PlusSquare },
+  { to: '/growth/monthly', label: 'Monthly Summary', icon: CalendarRange },
+  { to: '/growth/reports', label: 'Growth Reports', icon: FileDown },
+  { to: '/growth/platforms', label: 'Platforms', icon: Radio },
+  { to: '/growth/activity', label: 'Activity Logs', icon: Activity },
   { to: '/team', label: 'Team', icon: Users },
   { to: '/clients', label: 'Clients', icon: Building2 },
   { to: '/reports', label: 'Reports', icon: BarChart3 },

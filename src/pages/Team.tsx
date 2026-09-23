@@ -1,11 +1,11 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { Plus, Pencil, UserX, UserCheck } from 'lucide-react'
+import { Plus, Pencil, UserX, UserCheck, Link2 } from 'lucide-react'
 import { supabase, createIsolatedAuthClient } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import { usePresence } from '../contexts/PresenceContext'
 import { Badge, Button, Card, EmptyState, Field, Input, PageSpinner, Select } from '../components/ui/primitives'
 import { Dialog, ConfirmDialog } from '../components/ui/dialog'
-import type { Profile, UserRole } from '../types/database'
+import type { Client, ClientAssignment, Profile, UserRole } from '../types/database'
 import { formatDate } from '../lib/utils'
 
 type MemberTotals = Record<string, number>
@@ -15,15 +15,28 @@ export default function Team() {
   const { onlineUserIds } = usePresence()
   const [members, setMembers] = useState<Profile[]>([])
   const [totals, setTotals] = useState<MemberTotals>({})
+  const [clients, setClients] = useState<Client[]>([])
+  const [assignments, setAssignments] = useState<Record<string, ClientAssignment[]>>({})
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Profile | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [toggling, setToggling] = useState<Profile | null>(null)
+  const [assigning, setAssigning] = useState<Profile | null>(null)
 
   async function load() {
     setLoading(true)
     const { data: profiles } = await supabase.from('profiles').select('*').order('full_name')
     setMembers((profiles ?? []) as Profile[])
+
+    const { data: clientRows } = await supabase.from('clients').select('*').eq('status', 'active').order('name')
+    setClients((clientRows ?? []) as Client[])
+
+    const { data: assignmentRows } = await supabase.from('client_assignments').select('*')
+    const byEmployee: Record<string, ClientAssignment[]> = {}
+    for (const a of (assignmentRows ?? []) as ClientAssignment[]) {
+      byEmployee[a.employee_id] = [...(byEmployee[a.employee_id] ?? []), a]
+    }
+    setAssignments(byEmployee)
 
     const { data: logs } = await supabase.from('production_logs').select('user_id, videos_edited_count, videos_reedited_count, carousels_edited_count, carousels_reedited_count, text_posts_prepared_count, text_posts_reedited_count')
     const t: MemberTotals = {}
@@ -90,6 +103,7 @@ export default function Team() {
                   <th className="px-5 py-3">Name</th>
                   <th className="px-3 py-3">Email</th>
                   <th className="px-3 py-3">Role</th>
+                  <th className="px-3 py-3">Assigned Client</th>
                   <th className="px-3 py-3">Status</th>
                   <th className="px-3 py-3">Date Joined</th>
                   <th className="px-3 py-3 text-right">Total Items</th>
@@ -115,6 +129,24 @@ export default function Team() {
                     <td className="px-3 py-3">
                       <Badge variant={m.role === 'admin' ? 'admin' : 'assistant'} />
                     </td>
+                    <td className="px-3 py-3 text-ink-600">
+                      {m.role === 'admin' ? (
+                        <span className="text-ink-300">—</span>
+                      ) : (assignments[m.id]?.length ?? 0) === 0 ? (
+                        <span className="text-amber-600 text-xs font-medium">Unassigned</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {assignments[m.id]!.map((a) => {
+                            const name = clients.find((c) => c.id === a.client_id)?.name
+                            return name ? (
+                              <span key={a.id} className="inline-flex text-xs font-medium bg-ink-50 text-ink-700 px-2 py-0.5 rounded-full">
+                                {name}
+                              </span>
+                            ) : null
+                          })}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-3 py-3">
                       <Badge variant={m.status} />
                     </td>
@@ -122,6 +154,15 @@ export default function Team() {
                     <td className="px-3 py-3 text-right font-medium text-ink-800">{totals[m.id] ?? 0}</td>
                     <td className="px-5 py-3">
                       <div className="flex justify-end gap-1">
+                        {m.role !== 'admin' && (
+                          <button
+                            onClick={() => setAssigning(m)}
+                            className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-md"
+                            aria-label="Assign client"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         <button
                           onClick={() => setEditing(m)}
                           className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-md"
@@ -148,6 +189,15 @@ export default function Team() {
 
       <AddMemberDialog open={showAdd} onClose={() => setShowAdd(false)} onSaved={load} />
       {editing && <EditMemberDialog member={editing} onClose={() => setEditing(null)} onSaved={load} />}
+      {assigning && (
+        <AssignClientDialog
+          member={assigning}
+          clients={clients}
+          currentAssignments={assignments[assigning.id] ?? []}
+          onClose={() => setAssigning(null)}
+          onSaved={load}
+        />
+      )}
 
       <ConfirmDialog
         open={!!toggling}
@@ -323,6 +373,94 @@ function EditMemberDialog({
           </Button>
           <Button type="submit" loading={saving}>
             Save Changes
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  )
+}
+
+function AssignClientDialog({
+  member,
+  clients,
+  currentAssignments,
+  onClose,
+  onSaved,
+}: {
+  member: Profile
+  clients: Client[]
+  currentAssignments: ClientAssignment[]
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const { toast } = useToast()
+  const [selected, setSelected] = useState<string[]>(currentAssignments.map((a) => a.client_id))
+  const [saving, setSaving] = useState(false)
+
+  function toggle(clientId: string) {
+    setSelected((s) => (s.includes(clientId) ? s.filter((id) => id !== clientId) : [...s, clientId]))
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+
+    const before = new Set(currentAssignments.map((a) => a.client_id))
+    const after = new Set(selected)
+    const toAdd = selected.filter((id) => !before.has(id))
+    const toRemove = currentAssignments.filter((a) => !after.has(a.client_id))
+
+    let error: string | null = null
+    if (toAdd.length > 0) {
+      const { error: insertError } = await supabase
+        .from('client_assignments')
+        .insert(toAdd.map((client_id) => ({ employee_id: member.id, client_id })))
+      if (insertError) error = insertError.message
+    }
+    if (!error && toRemove.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('client_assignments')
+        .delete()
+        .in('id', toRemove.map((a) => a.id))
+      if (deleteError) error = deleteError.message
+    }
+
+    setSaving(false)
+    if (error) {
+      toast(`Couldn't update assignments: ${error}`, 'error')
+    } else {
+      toast(`${member.full_name}'s assigned clients were updated.`, 'success')
+      onClose()
+      onSaved()
+    }
+  }
+
+  return (
+    <Dialog open onClose={onClose} title={`Assign Clients — ${member.full_name}`}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <p className="text-sm text-ink-500">
+          {member.full_name} will only see and edit Growth Tracker data for the clients checked below — pick as many as apply.
+        </p>
+        <div className="flex flex-col gap-1 max-h-64 overflow-y-auto border border-ink-100 rounded-md p-2">
+          {clients.length === 0 && <p className="text-sm text-ink-400 px-2 py-1.5">No active clients yet.</p>}
+          {clients.map((c) => (
+            <label key={c.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-ink-50 cursor-pointer text-sm text-ink-800">
+              <input
+                type="checkbox"
+                checked={selected.includes(c.id)}
+                onChange={() => toggle(c.id)}
+                className="h-4 w-4 rounded border-ink-300 text-pine-700 focus:ring-pine-500"
+              />
+              {c.name}
+            </label>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={saving}>
+            Save Assignments
           </Button>
         </div>
       </form>

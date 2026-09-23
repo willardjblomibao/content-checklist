@@ -13,6 +13,12 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import AdminDashboard from './pages/AdminDashboard'
 import AssistantDashboard from './pages/AssistantDashboard'
+import GrowthDashboard from './pages/growth/GrowthDashboard'
+import GrowthInput from './pages/growth/GrowthInput'
+import Platforms from './pages/growth/Platforms'
+import GrowthMonthly from './pages/growth/GrowthMonthly'
+import ActivityLogs from './pages/growth/ActivityLogs'
+import GrowthReports from './pages/growth/GrowthReports'
 
 function RoleDashboard() {
   const { isAdmin, loading } = useAuth()
@@ -34,6 +40,19 @@ function AppRoutes() {
         <Route path="/" element={<RoleDashboard />} />
         <Route path="/daily-log" element={<DailyLog />} />
         <Route path="/history" element={<History />} />
+        <Route path="/growth" element={<GrowthDashboard />} />
+        <Route path="/growth/input" element={<GrowthInput />} />
+        <Route path="/growth/monthly" element={<GrowthMonthly />} />
+        <Route path="/growth/reports" element={<GrowthReports />} />
+        <Route path="/growth/activity" element={<ActivityLogs />} />
+        <Route
+          path="/growth/platforms"
+          element={
+            <ProtectedRoute adminOnly>
+              <Platforms />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/settings" element={<Settings />} />
         <Route
           path="/team"

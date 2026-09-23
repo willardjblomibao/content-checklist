@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, getISOWeek, startOfISOWeek } from 'date-fns'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -126,3 +126,55 @@ export function getWeekProgress(countsByDate: Map<string, number>, days = 7): Da
 
 /** Milestone thresholds shown as badges on the streak card. */
 export const STREAK_MILESTONES = [3, 7, 14, 30, 60] as const
+
+// ---------------------------------------------------------------------
+// Growth Tracker helpers — replaces the auto-calculated columns
+// (Year, Month, Week, Quarter) from the WEEKLY INPUT sheet.
+// ---------------------------------------------------------------------
+
+/** Snaps any date to the Monday that starts its week (matches the sheet's "Week Start"). */
+export function mondayOfISO(iso: string): string {
+  return format(startOfISOWeek(parseISO(iso)), 'yyyy-MM-dd')
+}
+
+/** Derives { year, month, week, quarter } from a week-start date, same as the sheet's formulas. */
+export function weekMeta(weekStartIso: string): { year: number; month: string; week: number; quarter: string } {
+  const d = parseISO(weekStartIso)
+  const quarter = `Q${Math.floor(d.getMonth() / 3) + 1}`
+  return {
+    year: d.getFullYear(),
+    month: format(d, 'MMMM'),
+    week: getISOWeek(d),
+    quarter,
+  }
+}
+
+/**
+ * Flags per-row anomalies, same rules as WEEKLY INPUT's "Check" column:
+ * - "negative value" — new_audience for this platform/week is negative (net unfollows)
+ * - "views spike" — this week's views are more than 5x the platform's previous week's views
+ * Returns a map of row id -> list of flags (empty array if nothing to flag).
+ */
+export function detectAnomalies<T extends { id: string; platform_id: string; week_start: string; views: number; new_audience: number }>(
+  rows: T[]
+): Map<string, string[]> {
+  const byPlatform = new Map<string, T[]>()
+  for (const r of rows) {
+    const list = byPlatform.get(r.platform_id) ?? []
+    list.push(r)
+    byPlatform.set(r.platform_id, list)
+  }
+
+  const flags = new Map<string, string[]>()
+  for (const list of byPlatform.values()) {
+    const sorted = [...list].sort((a, b) => a.week_start.localeCompare(b.week_start))
+    sorted.forEach((row, i) => {
+      const rowFlags: string[] = []
+      if (row.new_audience < 0) rowFlags.push('negative value')
+      const prev = sorted[i - 1]
+      if (prev && prev.views > 0 && row.views > prev.views * 5) rowFlags.push('views spike')
+      if (rowFlags.length > 0) flags.set(row.id, rowFlags)
+    })
+  }
+  return flags
+}

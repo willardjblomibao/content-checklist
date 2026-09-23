@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { Menu, X, Film } from 'lucide-react'
-import { Sidebar } from './Sidebar'
+import { Sidebar, assistantNav, adminNav } from './Sidebar'
 import { PasswordReminderBanner } from './PasswordReminderBanner'
 import { useAuth } from '../../contexts/AuthContext'
 import { PresenceProvider } from '../../contexts/PresenceContext'
@@ -11,22 +11,9 @@ export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { isAdmin, signOut } = useAuth()
 
-  const nav = isAdmin
-    ? [
-        { to: '/', label: 'Dashboard', end: true },
-        { to: '/daily-log', label: 'Daily Log' },
-        { to: '/history', label: 'History' },
-        { to: '/team', label: 'Team' },
-        { to: '/clients', label: 'Clients' },
-        { to: '/reports', label: 'Reports' },
-        { to: '/settings', label: 'Settings' },
-      ]
-    : [
-        { to: '/', label: 'Dashboard', end: true },
-        { to: '/daily-log', label: 'Daily Log' },
-        { to: '/history', label: 'History' },
-        { to: '/settings', label: 'Settings' },
-      ]
+  // Single source of truth: the same nav list the desktop Sidebar uses,
+  // so mobile never falls behind when a page is added there.
+  const nav = isAdmin ? adminNav : assistantNav
 
   return (
     <PresenceProvider>
@@ -47,7 +34,7 @@ export function AppLayout() {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-white text-ink-900">
+        <div className="md:hidden fixed inset-0 z-40 bg-white text-ink-900 overflow-y-auto">
           <div className="flex items-center justify-between h-14 px-4 border-b border-ink-100">
             <span className="font-semibold text-sm">Menu</span>
             <button onClick={() => setMobileOpen(false)} aria-label="Close menu">
@@ -63,13 +50,14 @@ export function AppLayout() {
                 onClick={() => setMobileOpen(false)}
                 className={({ isActive }) =>
                   cn(
-                    'px-4 py-2.5 rounded-full text-sm font-medium',
+                    'flex items-center gap-2.5 px-4 py-2.5 rounded-full text-sm font-medium',
                     isActive
                       ? 'bg-gradient-to-b from-pine-500 to-pine-700 text-white'
                       : 'text-ink-500 hover:bg-pine-50'
                   )
                 }
               >
+                <item.icon className="h-4 w-4 shrink-0" />
                 {item.label}
               </NavLink>
             ))}
