@@ -178,3 +178,38 @@ export function detectAnomalies<T extends { id: string; platform_id: string; wee
   }
   return flags
 }
+
+/**
+ * Pearson correlation coefficient between two equal-length numeric series.
+ * Returns null when there isn't enough variance/data to compute one (fewer
+ * than 3 points, or either series is constant).
+ */
+export function pearsonCorrelation(x: number[], y: number[]): number | null {
+  const n = Math.min(x.length, y.length)
+  if (n < 3) return null
+  const xs = x.slice(0, n)
+  const ys = y.slice(0, n)
+  const meanX = xs.reduce((s, v) => s + v, 0) / n
+  const meanY = ys.reduce((s, v) => s + v, 0) / n
+  let num = 0
+  let denomX = 0
+  let denomY = 0
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - meanX
+    const dy = ys[i] - meanY
+    num += dx * dy
+    denomX += dx * dx
+    denomY += dy * dy
+  }
+  if (denomX === 0 || denomY === 0) return null
+  return num / Math.sqrt(denomX * denomY)
+}
+
+/** Human-readable label for a Pearson r value, agency-report style. */
+export function describeCorrelation(r: number | null): string {
+  if (r === null) return 'Not enough data yet'
+  const abs = Math.abs(r)
+  const strength = abs >= 0.7 ? 'Strong' : abs >= 0.4 ? 'Moderate' : abs >= 0.2 ? 'Weak' : 'No real'
+  const direction = r >= 0 ? 'positive' : 'negative'
+  return abs < 0.2 ? 'No real correlation' : `${strength} ${direction} correlation`
+}

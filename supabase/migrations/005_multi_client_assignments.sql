@@ -17,10 +17,10 @@ alter table public.client_assignments add constraint client_assignments_employee
 -- ---------------------------------------------------------------------
 -- 2. Replace the single-client helper with a set-returning one. Old
 --    call sites (client_id = public.my_client_id()) become
---    (client_id in (select public.my_client_ids())) below.
+--    (client_id in (select public.my_client_ids())) below. The old
+--    function itself is dropped at the very end, once every policy
+--    that referenced it has been redefined against the new one.
 -- ---------------------------------------------------------------------
-drop function if exists public.my_client_id();
-
 create or replace function public.my_client_ids()
 returns setof uuid as $$
   select client_id from public.client_assignments where employee_id = auth.uid();
@@ -60,3 +60,9 @@ create policy "weekly_metrics_delete_own_or_admin"
 -- activity_logs policies are unaffected — they already scope by
 -- user_id = auth.uid(), independent of which/how many clients that
 -- user is assigned to.
+
+-- ---------------------------------------------------------------------
+-- 3. Now that no policy references it anymore, drop the old single-
+--    client helper from 003_client_assignments.sql.
+-- ---------------------------------------------------------------------
+drop function if exists public.my_client_id();

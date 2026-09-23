@@ -14,6 +14,7 @@ import {
   CalendarRange,
   Activity,
   FileDown,
+  Zap,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn, initials } from '../../lib/utils'
@@ -25,6 +26,7 @@ export const assistantNav = [
   { to: '/growth', label: 'Growth', icon: TrendingUp, end: true },
   { to: '/growth/input', label: 'Weekly Growth', icon: PlusSquare },
   { to: '/growth/monthly', label: 'Monthly Summary', icon: CalendarRange },
+  { to: '/growth/correlation', label: 'Content Impact', icon: Zap },
   { to: '/growth/reports', label: 'Growth Reports', icon: FileDown },
   { to: '/growth/activity', label: 'Activity Logs', icon: Activity },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -37,6 +39,7 @@ export const adminNav = [
   { to: '/growth', label: 'Growth', icon: TrendingUp, end: true },
   { to: '/growth/input', label: 'Weekly Growth', icon: PlusSquare },
   { to: '/growth/monthly', label: 'Monthly Summary', icon: CalendarRange },
+  { to: '/growth/correlation', label: 'Content Impact', icon: Zap },
   { to: '/growth/reports', label: 'Growth Reports', icon: FileDown },
   { to: '/growth/platforms', label: 'Platforms', icon: Radio },
   { to: '/growth/activity', label: 'Activity Logs', icon: Activity },
