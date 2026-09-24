@@ -3,13 +3,14 @@ import { Outlet, NavLink } from 'react-router-dom'
 import { Menu, X, Film } from 'lucide-react'
 import { Sidebar, assistantNav, adminNav } from './Sidebar'
 import { PasswordReminderBanner } from './PasswordReminderBanner'
+import { WhatsNewModal } from './WhatsNewModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { PresenceProvider } from '../../contexts/PresenceContext'
 import { cn } from '../../lib/utils'
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const { isAdmin, signOut } = useAuth()
+  const { isAdmin, profile, signOut } = useAuth()
 
   // Single source of truth: the same nav list the desktop Sidebar uses,
   // so mobile never falls behind when a page is added there.
@@ -73,6 +74,7 @@ export function AppLayout() {
 
       <main className="flex-1 min-w-0 pt-14 md:pt-0 flex flex-col">
         <PasswordReminderBanner />
+        {profile && <WhatsNewModal />}
         <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 md:py-8">
           <Outlet />
         </div>
