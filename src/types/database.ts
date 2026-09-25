@@ -215,5 +215,43 @@ export interface Database {
         Update: Partial<ClientShareLink>
       }
     }
+    Functions: {
+      get_client_report_info: {
+        Args: { p_token: string }
+        Returns: { client_id: string; client_name: string }[]
+      }
+      get_client_growth_platforms: {
+        Args: { p_token: string }
+        Returns: { id: string; name: string; icon: string; color: string; active: boolean }[]
+      }
+      get_client_growth_weekly_metrics: {
+        Args: { p_token: string }
+        Returns: {
+          id: string
+          platform_id: string
+          platform_name: string
+          platform_color: string
+          week_start: string
+          year: number
+          month: string
+          week: number
+          views: number
+          new_audience: number
+          total_audience: number | null
+        }[]
+      }
+      get_client_growth_production_summary: {
+        Args: { p_token: string }
+        Returns: {
+          production_date: string
+          videos_edited_count: number
+          videos_reedited_count: number
+          carousels_edited_count: number
+          carousels_reedited_count: number
+          text_posts_prepared_count: number
+          text_posts_reedited_count: number
+        }[]
+      }
+    }
   }
 }

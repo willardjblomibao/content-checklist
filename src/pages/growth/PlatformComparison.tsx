@@ -41,7 +41,7 @@ export default function PlatformComparison() {
   const [platforms, setPlatforms] = useState<Platform[]>([])
   const [platformA, setPlatformA] = useState('')
   const [platformB, setPlatformB] = useState('')
-  const [year, setYear] = useState(new Date().getFullYear())
+  const [year, setYear] = useState<string>(String(new Date().getFullYear()))
   const [rows, setRows] = useState<WeeklyMetric[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -88,15 +88,12 @@ export default function PlatformComparison() {
       return
     }
     setLoading(true)
-    supabase
-      .from('weekly_metrics')
-      .select('*')
-      .eq('client_id', clientId)
-      .eq('year', year)
-      .then(({ data }) => {
-        setRows((data ?? []) as WeeklyMetric[])
-        setLoading(false)
-      })
+    let query = supabase.from('weekly_metrics').select('*').eq('client_id', clientId)
+    if (year !== 'all') query = query.eq('year', Number(year))
+    query.then(({ data }) => {
+      setRows((data ?? []) as WeeklyMetric[])
+      setLoading(false)
+    })
   }, [clientId, year])
 
   const platformAName = platforms.find((p) => p.id === platformA)?.name ?? 'Platform A'
@@ -127,7 +124,10 @@ export default function PlatformComparison() {
     const aFollowers = sumOf('aFollowers')
     const bViews = sumOf('bViews')
     const bFollowers = sumOf('bFollowers')
-    const activeDays = monthsWithData.reduce((s, m) => s + DAYS_IN_MONTH(year, m.monthIndex), 0) || 1
+    // "All years" spans multiple calendar years, so days-in-month is only ever an
+    // approximation there — fall back to the current year's calendar for that case.
+    const dayCountYear = year === 'all' ? new Date().getFullYear() : Number(year)
+    const activeDays = monthsWithData.reduce((s, m) => s + DAYS_IN_MONTH(dayCountYear, m.monthIndex), 0) || 1
     return {
       aViews,
       aFollowers,
@@ -152,7 +152,7 @@ export default function PlatformComparison() {
   }
 
   const rowsForExport = monthsWithData.map((m) => {
-    const daysA = DAYS_IN_MONTH(year, m.monthIndex)
+    const daysA = DAYS_IN_MONTH(year === 'all' ? new Date().getFullYear() : Number(year), m.monthIndex)
     return {
       Month: m.month,
       [`${platformAName} Views`]: m.aViews,
@@ -177,7 +177,7 @@ export default function PlatformComparison() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${platformAName}-vs-${platformBName}-${clientName}-${year}.csv`
+    a.download = `${platformAName}-vs-${platformBName}-${clientName}-${year === 'all' ? 'all-years' : year}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -186,7 +186,7 @@ export default function PlatformComparison() {
     const ws = XLSX.utils.json_to_sheet(rowsForExport)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, `${platformAName} vs ${platformBName}`)
-    XLSX.writeFile(wb, `${platformAName}-vs-${platformBName}-${clientName}-${year}.xlsx`)
+    XLSX.writeFile(wb, `${platformAName}-vs-${platformBName}-${clientName}-${year === 'all' ? 'all-years' : year}.xlsx`)
   }
 
   function exportPdf() {
@@ -195,7 +195,7 @@ export default function PlatformComparison() {
     doc.text(`${platformAName} vs ${platformBName} — ${clientName}`, 14, 16)
     doc.setFontSize(10)
     doc.setTextColor(120)
-    doc.text(`${year}`, 14, 22)
+    doc.text(`${year === 'all' ? 'All Years' : year}`, 14, 22)
     autoTable(doc, {
       startY: 28,
       head: [Object.keys(rowsForExport[0] ?? {})],
@@ -203,7 +203,7 @@ export default function PlatformComparison() {
       styles: { fontSize: 7 },
       headStyles: { fillColor: [47, 107, 79] },
     })
-    doc.save(`${platformAName}-vs-${platformBName}-${clientName}-${year}.pdf`)
+    doc.save(`${platformAName}-vs-${platformBName}-${clientName}-${year === 'all' ? 'all-years' : year}.pdf`)
   }
 
   return (
@@ -243,12 +243,15 @@ export default function PlatformComparison() {
             </FilterField>
           )}
           <FilterField label="Year">
-            <Select className="w-24" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {[year, year - 1, year - 2].filter((v, i, a) => a.indexOf(v) === i).map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
+            <Select className="w-24" value={year} onChange={(e) => setYear(e.target.value)}>
+              <option value="all">ALL</option>
+              {[Number(year) || new Date().getFullYear(), Number(year) - 1, Number(year) - 2]
+                .filter((v, i, a) => !Number.isNaN(v) && a.indexOf(v) === i)
+                .map((y) => (
+                  <option key={y} value={String(y)}>
+                    {y}
+                  </option>
+                ))}
             </Select>
           </FilterField>
           <FilterField label="Platform A">
@@ -296,7 +299,7 @@ export default function PlatformComparison() {
       ) : platforms.length < 2 ? (
         <EmptyState title="Need at least 2 platforms" description="Add another platform for this client from the Platforms page to compare." />
       ) : monthsWithData.length === 0 ? (
-        <EmptyState title={`No data for ${year} yet`} description="Add weekly growth data first from the Weekly Growth page." />
+        <EmptyState title={`No data for ${year === 'all' ? 'any year' : year} yet`} description="Add weekly growth data first from the Weekly Growth page." />
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

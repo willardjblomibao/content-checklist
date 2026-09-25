@@ -183,7 +183,7 @@ function DashboardTab({
   platforms: GrowthPlatform[]
   clientName: string
 }) {
-  const [year, setYear] = useState(new Date().getFullYear())
+  const [year, setYear] = useState<string>(String(new Date().getFullYear()))
   const [platformFilter, setPlatformFilter] = useState('')
   const [monthFrom, setMonthFrom] = useState(1)
   const [monthTo, setMonthTo] = useState(12)
@@ -191,7 +191,10 @@ function DashboardTab({
   const years = useMemo(() => Array.from(new Set(metrics.map((m) => m.year))).sort((a, b) => b - a), [metrics])
   const monthOf = (iso: string) => Number(iso.slice(5, 7))
 
-  const rowsForYear = useMemo(() => metrics.filter((m) => m.year === year), [metrics, year])
+  const rowsForYear = useMemo(
+    () => (year === 'all' ? metrics : metrics.filter((m) => m.year === Number(year))),
+    [metrics, year]
+  )
   const rowsInMonthRange = useMemo(
     () => rowsForYear.filter((r) => monthOf(r.week_start) >= monthFrom && monthOf(r.week_start) <= monthTo),
     [rowsForYear, monthFrom, monthTo]
@@ -257,7 +260,7 @@ function DashboardTab({
 
   function exportCsv() {
     const rows = weekBuckets.map((w) => ({ Week: w.week_start, Views: w.views, 'New Audience': w.new_audience }))
-    downloadCsv(rows, `${clientName}-growth-dashboard-${year}.csv`)
+    downloadCsv(rows, `${clientName}-growth-dashboard-${year === 'all' ? 'all-years' : year}.csv`)
   }
 
   return (
@@ -265,9 +268,10 @@ function DashboardTab({
       <Card className="p-4 print:hidden">
         <div className="flex items-end gap-3 flex-wrap">
           <FilterField label="Year">
-            <Select className="w-24" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {(years.length ? years : [year]).map((y) => (
-                <option key={y} value={y}>{y}</option>
+            <Select className="w-28" value={year} onChange={(e) => setYear(e.target.value)}>
+              <option value="all">ALL</option>
+              {years.map((y) => (
+                <option key={y} value={String(y)}>{y}</option>
               ))}
             </Select>
           </FilterField>
@@ -295,7 +299,7 @@ function DashboardTab({
       </Card>
 
       {filteredRows.length === 0 ? (
-        <EmptyState title={`No data for ${year} yet`} description="Try a different year or widen the month range above." />
+        <EmptyState title={`No data for ${year === 'all' ? 'any year' : year} yet`} description="Try a different year or widen the month range above." />
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -394,57 +398,67 @@ function DashboardTab({
 // Monthly Summary — year vs. comparison year, month + quarter rollups.
 // ---------------------------------------------------------------------
 function MonthlyTab({ metrics }: { metrics: GrowthMetricRow[] }) {
-  const [year, setYear] = useState(new Date().getFullYear())
+  const [year, setYear] = useState<string>(String(new Date().getFullYear()))
   const [compareYear, setCompareYear] = useState(new Date().getFullYear() - 1)
   const years = useMemo(() => Array.from(new Set(metrics.map((m) => m.year))).sort((a, b) => b - a), [metrics])
+  const showCompare = year !== 'all'
 
-  const rows = useMemo(() => metrics.filter((r) => r.year === year || r.year === compareYear), [metrics, year, compareYear])
+  const rows = useMemo(
+    () => (year === 'all' ? metrics : metrics.filter((r) => r.year === Number(year) || r.year === compareYear)),
+    [metrics, year, compareYear]
+  )
 
   const monthly = useMemo(() => {
+    const sum = (list: GrowthMetricRow[], key: 'views' | 'new_audience') => list.reduce((s, r) => s + r[key], 0)
     return MONTH_NAMES.map((month) => {
-      const current = rows.filter((r) => r.year === year && r.month === month)
-      const prior = rows.filter((r) => r.year === compareYear && r.month === month)
-      const sum = (list: GrowthMetricRow[], key: 'views' | 'new_audience') => list.reduce((s, r) => s + r[key], 0)
+      const current = year === 'all' ? rows.filter((r) => r.month === month) : rows.filter((r) => r.year === Number(year) && r.month === month)
+      const prior = showCompare ? rows.filter((r) => r.year === compareYear && r.month === month) : []
       return {
         month,
         quarter: `Q${QUARTER_OF[month]}`,
-        [`${year}`]: sum(current, 'views'),
-        [`${compareYear}`]: sum(prior, 'views'),
+        current: sum(current, 'views'),
+        prior: sum(prior, 'views'),
         currentAudience: sum(current, 'new_audience'),
         priorAudience: sum(prior, 'new_audience'),
       }
     })
-  }, [rows, year, compareYear])
+  }, [rows, year, compareYear, showCompare])
 
   const quarterly = useMemo(() => {
     const q: Record<string, { quarter: string; current: number; prior: number }> = {}
     for (const m of monthly) {
       if (!q[m.quarter]) q[m.quarter] = { quarter: m.quarter, current: 0, prior: 0 }
-      q[m.quarter].current += (m as any)[`${year}`]
-      q[m.quarter].prior += (m as any)[`${compareYear}`]
+      q[m.quarter].current += m.current
+      q[m.quarter].prior += m.prior
     }
     return Object.values(q)
-  }, [monthly, year, compareYear])
+  }, [monthly])
 
-  const totalCurrent = monthly.reduce((s, m) => s + (m as any)[`${year}`], 0)
-  const totalPrior = monthly.reduce((s, m) => s + (m as any)[`${compareYear}`], 0)
-  const yoyPct = totalPrior > 0 ? (((totalCurrent - totalPrior) / totalPrior) * 100).toFixed(1) : null
+  const totalCurrent = monthly.reduce((s, m) => s + m.current, 0)
+  const totalPrior = monthly.reduce((s, m) => s + m.prior, 0)
+  const yoyPct = showCompare && totalPrior > 0 ? (((totalCurrent - totalPrior) / totalPrior) * 100).toFixed(1) : null
+  const yearLabel = year === 'all' ? 'All Years' : year
 
   return (
     <div className="flex flex-col gap-5">
       <Card className="p-4 print:hidden">
         <div className="flex items-end gap-3 flex-wrap">
           <FilterField label="Year">
-            <Select className="w-28" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {(years.length ? years : [year]).map((y) => <option key={y} value={y}>{y}</option>)}
+            <Select className="w-28" value={year} onChange={(e) => setYear(e.target.value)}>
+              <option value="all">ALL</option>
+              {years.map((y) => <option key={y} value={String(y)}>{y}</option>)}
             </Select>
           </FilterField>
-          <span className="text-xs text-ink-400 pb-2">vs</span>
-          <FilterField label="Compare to">
-            <Select className="w-28" value={compareYear} onChange={(e) => setCompareYear(Number(e.target.value))}>
-              {(years.length ? years : [compareYear]).map((y) => <option key={y} value={y}>{y}</option>)}
-            </Select>
-          </FilterField>
+          {showCompare && (
+            <>
+              <span className="text-xs text-ink-400 pb-2">vs</span>
+              <FilterField label="Compare to">
+                <Select className="w-28" value={compareYear} onChange={(e) => setCompareYear(Number(e.target.value))}>
+                  {(years.length ? years : [compareYear]).map((y) => <option key={y} value={y}>{y}</option>)}
+                </Select>
+              </FilterField>
+            </>
+          )}
         </div>
       </Card>
 
@@ -452,23 +466,29 @@ function MonthlyTab({ metrics }: { metrics: GrowthMetricRow[] }) {
         <EmptyState title="No data for these years yet" description="Try different years above." />
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className={cn('grid grid-cols-1 gap-4', showCompare ? 'sm:grid-cols-3' : 'sm:grid-cols-1 max-w-xs')}>
             <Card className="p-4">
-              <p className="text-xs font-medium text-ink-500">{year} Total Views</p>
+              <p className="text-xs font-medium text-ink-500">{yearLabel} Total Views</p>
               <p className="text-2xl font-semibold text-ink-900 mt-2">{totalCurrent.toLocaleString()}</p>
             </Card>
-            <Card className="p-4">
-              <p className="text-xs font-medium text-ink-500">{compareYear} Total Views</p>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{totalPrior.toLocaleString()}</p>
-            </Card>
-            <Card className="p-4">
-              <p className="text-xs font-medium text-ink-500">Year-over-Year</p>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{yoyPct === null ? '—' : `${Number(yoyPct) >= 0 ? '+' : ''}${yoyPct}%`}</p>
-            </Card>
+            {showCompare && (
+              <>
+                <Card className="p-4">
+                  <p className="text-xs font-medium text-ink-500">{compareYear} Total Views</p>
+                  <p className="text-2xl font-semibold text-ink-900 mt-2">{totalPrior.toLocaleString()}</p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-xs font-medium text-ink-500">Year-over-Year</p>
+                  <p className="text-2xl font-semibold text-ink-900 mt-2">{yoyPct === null ? '—' : `${Number(yoyPct) >= 0 ? '+' : ''}${yoyPct}%`}</p>
+                </Card>
+              </>
+            )}
           </div>
 
           <Card className="p-5">
-            <h2 className="text-sm font-semibold text-ink-800 mb-4">Monthly Views — {year} vs {compareYear}</h2>
+            <h2 className="text-sm font-semibold text-ink-800 mb-4">
+              Monthly Views {showCompare ? `— ${yearLabel} vs ${compareYear}` : `— ${yearLabel}`}
+            </h2>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthly} margin={{ left: -10, right: 10 }}>
@@ -477,8 +497,8 @@ function MonthlyTab({ metrics }: { metrics: GrowthMetricRow[] }) {
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey={`${year}`} name={`${year}`} fill="#2F6B4F" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey={`${compareYear}`} name={`${compareYear}`} fill="#D97757" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="current" name={`${yearLabel}`} fill="#2F6B4F" radius={[4, 4, 0, 0]} />
+                  {showCompare && <Bar dataKey="prior" name={`${compareYear}`} fill="#D97757" radius={[4, 4, 0, 0]} />}
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -491,9 +511,9 @@ function MonthlyTab({ metrics }: { metrics: GrowthMetricRow[] }) {
                 <thead>
                   <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
                     <th className="px-5 py-3">Quarter</th>
-                    <th className="px-3 py-3 text-right">{year} Views</th>
-                    <th className="px-3 py-3 text-right">{compareYear} Views</th>
-                    <th className="px-5 py-3 text-right">Change</th>
+                    <th className="px-3 py-3 text-right">{yearLabel} Views</th>
+                    {showCompare && <th className="px-3 py-3 text-right">{compareYear} Views</th>}
+                    {showCompare && <th className="px-5 py-3 text-right">Change</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -503,8 +523,8 @@ function MonthlyTab({ metrics }: { metrics: GrowthMetricRow[] }) {
                       <tr key={q.quarter} className="border-b border-ink-50 last:border-0">
                         <td className="px-5 py-3 font-medium text-ink-900">{q.quarter}</td>
                         <td className="px-3 py-3 text-right text-ink-600">{q.current.toLocaleString()}</td>
-                        <td className="px-3 py-3 text-right text-ink-600">{q.prior.toLocaleString()}</td>
-                        <td className="px-5 py-3 text-right text-ink-600">{change === null ? '—' : `${Number(change) >= 0 ? '+' : ''}${change}%`}</td>
+                        {showCompare && <td className="px-3 py-3 text-right text-ink-600">{q.prior.toLocaleString()}</td>}
+                        {showCompare && <td className="px-5 py-3 text-right text-ink-600">{change === null ? '—' : `${Number(change) >= 0 ? '+' : ''}${change}%`}</td>}
                       </tr>
                     )
                   })}
@@ -524,7 +544,7 @@ function MonthlyTab({ metrics }: { metrics: GrowthMetricRow[] }) {
 // Pearson correlation, same as the admin Content Correlation page.
 // ---------------------------------------------------------------------
 function CorrelationTab({ metrics, production }: { metrics: GrowthMetricRow[]; production: ProductionSummaryRow[] }) {
-  const [year, setYear] = useState(new Date().getFullYear())
+  const [year, setYear] = useState<string>(String(new Date().getFullYear()))
   const years = useMemo(
     () => Array.from(new Set([...metrics.map((m) => m.year), ...production.map((p) => Number(p.production_date.slice(0, 4)))])).sort((a, b) => b - a),
     [metrics, production]
@@ -533,7 +553,7 @@ function CorrelationTab({ metrics, production }: { metrics: GrowthMetricRow[]; p
   const weeks = useMemo(() => {
     const byWeek = new Map<string, { week_start: string; contentItems: number; videos: number; carousels: number; textPosts: number; views: number; new_audience: number }>()
     for (const log of production) {
-      if (Number(log.production_date.slice(0, 4)) !== year) continue
+      if (year !== 'all' && Number(log.production_date.slice(0, 4)) !== Number(year)) continue
       const week_start = mondayOfISO(log.production_date)
       const row = byWeek.get(week_start) ?? { week_start, contentItems: 0, videos: 0, carousels: 0, textPosts: 0, views: 0, new_audience: 0 }
       const videos = (log.videos_edited_count ?? 0) + (log.videos_reedited_count ?? 0)
@@ -546,7 +566,7 @@ function CorrelationTab({ metrics, production }: { metrics: GrowthMetricRow[]; p
       byWeek.set(week_start, row)
     }
     for (const m of metrics) {
-      if (m.year !== year) continue
+      if (year !== 'all' && m.year !== Number(year)) continue
       const row = byWeek.get(m.week_start) ?? { week_start: m.week_start, contentItems: 0, videos: 0, carousels: 0, textPosts: 0, views: 0, new_audience: 0 }
       row.views += m.views
       row.new_audience += m.new_audience
@@ -572,8 +592,9 @@ function CorrelationTab({ metrics, production }: { metrics: GrowthMetricRow[]; p
     <div className="flex flex-col gap-5">
       <Card className="p-4 print:hidden">
         <FilterField label="Year">
-          <Select className="w-28" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-            {(years.length ? years : [year]).map((y) => <option key={y} value={y}>{y}</option>)}
+          <Select className="w-28" value={year} onChange={(e) => setYear(e.target.value)}>
+            <option value="all">ALL</option>
+            {years.map((y) => <option key={y} value={String(y)}>{y}</option>)}
           </Select>
         </FilterField>
       </Card>
@@ -666,7 +687,7 @@ function CorrelationTab({ metrics, production }: { metrics: GrowthMetricRow[]; p
 // Platform vs Platform — head-to-head monthly comparison of two platforms.
 // ---------------------------------------------------------------------
 function CompareTab({ metrics, platforms, clientName }: { metrics: GrowthMetricRow[]; platforms: GrowthPlatform[]; clientName: string }) {
-  const [year, setYear] = useState(new Date().getFullYear())
+  const [year, setYear] = useState<string>(String(new Date().getFullYear()))
   const [platformA, setPlatformA] = useState(platforms[0]?.id ?? '')
   const [platformB, setPlatformB] = useState(platforms[1]?.id ?? platforms[0]?.id ?? '')
   const years = useMemo(() => Array.from(new Set(metrics.map((m) => m.year))).sort((a, b) => b - a), [metrics])
@@ -677,9 +698,10 @@ function CompareTab({ metrics, platforms, clientName }: { metrics: GrowthMetricR
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [platforms])
 
-  const rows = useMemo(() => metrics.filter((m) => m.year === year), [metrics, year])
+  const rows = useMemo(() => (year === 'all' ? metrics : metrics.filter((m) => m.year === Number(year))), [metrics, year])
   const platformAName = platforms.find((p) => p.id === platformA)?.name ?? 'Platform A'
   const platformBName = platforms.find((p) => p.id === platformB)?.name ?? 'Platform B'
+  const yearLabel = year === 'all' ? 'All Years' : year
 
   const monthly = useMemo(() => {
     return MONTHS.map((month, i) => {
@@ -697,7 +719,10 @@ function CompareTab({ metrics, platforms, clientName }: { metrics: GrowthMetricR
   const totals = useMemo(() => {
     const sumOf = (key: 'aViews' | 'aFollowers' | 'bViews' | 'bFollowers') => monthly.reduce((s, m) => s + m[key], 0)
     const aViews = sumOf('aViews'), aFollowers = sumOf('aFollowers'), bViews = sumOf('bViews'), bFollowers = sumOf('bFollowers')
-    const activeDays = monthsWithData.reduce((s, m) => s + daysInMonth(year, m.monthIndex), 0) || 1
+    // "All years" spans multiple calendar years, so days-in-month is only ever an
+    // approximation there — fall back to the current year's calendar for that case.
+    const dayCountYear = year === 'all' ? new Date().getFullYear() : Number(year)
+    const activeDays = monthsWithData.reduce((s, m) => s + daysInMonth(dayCountYear, m.monthIndex), 0) || 1
     return {
       aViews, aFollowers, bViews, bFollowers,
       aVpf: aFollowers > 0 ? aViews / aFollowers : null,
@@ -721,7 +746,7 @@ function CompareTab({ metrics, platforms, clientName }: { metrics: GrowthMetricR
       [`${platformBName} Views`]: m.bViews,
       [`${platformBName} Followers`]: m.bFollowers,
     }))
-    downloadCsv(rows, `${platformAName}-vs-${platformBName}-${clientName}-${year}.csv`)
+    downloadCsv(rows, `${platformAName}-vs-${platformBName}-${clientName}-${year === 'all' ? 'all-years' : year}.csv`)
   }
 
   return (
@@ -729,8 +754,9 @@ function CompareTab({ metrics, platforms, clientName }: { metrics: GrowthMetricR
       <Card className="p-4 print:hidden">
         <div className="flex items-end gap-3 flex-wrap">
           <FilterField label="Year">
-            <Select className="w-24" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {(years.length ? years : [year]).map((y) => <option key={y} value={y}>{y}</option>)}
+            <Select className="w-24" value={year} onChange={(e) => setYear(e.target.value)}>
+              <option value="all">ALL</option>
+              {years.map((y) => <option key={y} value={String(y)}>{y}</option>)}
             </Select>
           </FilterField>
           <FilterField label="Platform A">
@@ -753,7 +779,7 @@ function CompareTab({ metrics, platforms, clientName }: { metrics: GrowthMetricR
       {platforms.length < 2 ? (
         <EmptyState title="Need at least 2 platforms" description="This client only has one platform tracked so far." />
       ) : monthsWithData.length === 0 ? (
-        <EmptyState title={`No data for ${year} yet`} description="Try a different year above." />
+        <EmptyState title={`No data for ${yearLabel} yet`} description="Try a different year above." />
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

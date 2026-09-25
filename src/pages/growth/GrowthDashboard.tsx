@@ -33,7 +33,7 @@ export default function GrowthDashboard() {
   const [clientId, setClientId] = useState('')
   const [platforms, setPlatforms] = useState<Platform[]>([])
   const [platformFilter, setPlatformFilter] = useState('') // '' = ALL
-  const [year, setYear] = useState(new Date().getFullYear())
+  const [year, setYear] = useState<string>(String(new Date().getFullYear()))
   const [monthFrom, setMonthFrom] = useState(1)
   const [monthTo, setMonthTo] = useState(12)
   const [rows, setRows] = useState<Row[]>([])
@@ -77,16 +77,15 @@ export default function GrowthDashboard() {
       return
     }
     setLoading(true)
-    supabase
+    let query = supabase
       .from('weekly_metrics')
       .select('*, platform:platforms(id, name, color)')
       .eq('client_id', clientId)
-      .eq('year', year)
-      .order('week_start')
-      .then(({ data }) => {
-        setRows((data ?? []) as unknown as Row[])
-        setLoading(false)
-      })
+    if (year !== 'all') query = query.eq('year', Number(year))
+    query.order('week_start').then(({ data }) => {
+      setRows((data ?? []) as unknown as Row[])
+      setLoading(false)
+    })
   }, [clientId, year])
 
   const selectedClient = isAdmin
@@ -230,12 +229,16 @@ export default function GrowthDashboard() {
             </FilterField>
           )}
           <FilterField label="Year">
-            <Select className="w-24" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {[year, year - 1, year - 2, year + 1].filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => b - a).map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
+            <Select className="w-24" value={year} onChange={(e) => setYear(e.target.value)}>
+              <option value="all">ALL</option>
+              {[Number(year) || new Date().getFullYear(), Number(year) - 1, Number(year) - 2, Number(year) + 1]
+                .filter((v, i, a) => !Number.isNaN(v) && a.indexOf(v) === i)
+                .sort((a, b) => b - a)
+                .map((y) => (
+                  <option key={y} value={String(y)}>
+                    {y}
+                  </option>
+                ))}
             </Select>
           </FilterField>
           <FilterField label="Platform">
@@ -280,7 +283,7 @@ export default function GrowthDashboard() {
         />
       ) : rows.length === 0 ? (
         <EmptyState
-          title={`No growth data for ${year} yet`}
+          title={`No growth data for ${year === 'all' ? 'any year' : year} yet`}
           description="Add this client's weekly views and audience numbers, or pick a different year above."
           action={
             <Link to="/growth/input">

@@ -31,7 +31,7 @@ export default function ContentCorrelation() {
   const { isAdmin, assignedClients } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [clientId, setClientId] = useState('')
-  const [year, setYear] = useState(new Date().getFullYear())
+  const [year, setYear] = useState<string>(String(new Date().getFullYear()))
   const [weeks, setWeeks] = useState<WeekRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -61,15 +61,21 @@ export default function ContentCorrelation() {
     setLoading(true)
 
     Promise.all([
-      supabase
-        .from('production_logs')
-        .select(
-          'production_date, videos_edited_count, videos_reedited_count, carousels_edited_count, carousels_reedited_count, text_posts_prepared_count, text_posts_reedited_count'
-        )
-        .eq('client_id', clientId)
-        .gte('production_date', `${year}-01-01`)
-        .lte('production_date', `${year}-12-31`),
-      supabase.from('weekly_metrics').select('week_start, views, new_audience').eq('client_id', clientId).eq('year', year),
+      (() => {
+        let q = supabase
+          .from('production_logs')
+          .select(
+            'production_date, videos_edited_count, videos_reedited_count, carousels_edited_count, carousels_reedited_count, text_posts_prepared_count, text_posts_reedited_count'
+          )
+          .eq('client_id', clientId)
+        if (year !== 'all') q = q.gte('production_date', `${year}-01-01`).lte('production_date', `${year}-12-31`)
+        return q
+      })(),
+      (() => {
+        let q = supabase.from('weekly_metrics').select('week_start, views, new_audience').eq('client_id', clientId)
+        if (year !== 'all') q = q.eq('year', Number(year))
+        return q
+      })(),
     ]).then(([logsRes, metricsRes]) => {
       const byWeek = new Map<string, WeekRow>()
 
@@ -160,12 +166,15 @@ export default function ContentCorrelation() {
               ))}
             </Select>
           )}
-          <Select className="w-28" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-            {[year, year - 1, year - 2].filter((v, i, a) => a.indexOf(v) === i).map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
+          <Select className="w-28" value={year} onChange={(e) => setYear(e.target.value)}>
+            <option value="all">ALL</option>
+            {[Number(year) || new Date().getFullYear(), Number(year) - 1, Number(year) - 2]
+              .filter((v, i, a) => !Number.isNaN(v) && a.indexOf(v) === i)
+              .map((y) => (
+                <option key={y} value={String(y)}>
+                  {y}
+                </option>
+              ))}
           </Select>
         </div>
       </div>
