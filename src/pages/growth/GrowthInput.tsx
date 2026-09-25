@@ -1,13 +1,14 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
-import { Trash2, ClipboardPaste, UploadCloud, AlertTriangle } from 'lucide-react'
+import { Trash2, ClipboardPaste, UploadCloud, AlertTriangle, FileSpreadsheet, FileUp } from 'lucide-react'
 import Papa from 'papaparse'
+import * as XLSX from 'xlsx'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button, Card, CardContent, CardHeader, EmptyState, Field, Input, PageSpinner, Select, Textarea } from '../../components/ui/primitives'
 import { ConfirmDialog } from '../../components/ui/dialog'
 import type { Client, Platform, WeeklyMetric } from '../../types/database'
-import { formatDate, mondayOfISO, todayISO, weekMeta, detectAnomalies, cn } from '../../lib/utils'
+import { formatDate, mondayOfISO, todayISO, weekMeta, detectAnomalies, cn, parseMonthlyWideReport } from '../../lib/utils'
 
 type Row = WeeklyMetric & { platform: Pick<Platform, 'id' | 'name' | 'color'> | null }
 
@@ -26,6 +27,13 @@ export default function GrowthInput() {
   const [loadingPlatforms, setLoadingPlatforms] = useState(true)
   const [bulkText, setBulkText] = useState('')
   const [showBulk, setShowBulk] = useState(false)
+  const [showMonthlyImport, setShowMonthlyImport] = useState(false)
+  const [monthlyImportText, setMonthlyImportText] = useState('')
+  const [monthlyImportYear, setMonthlyImportYear] = useState(new Date().getFullYear())
+  const [monthlyImporting, setMonthlyImporting] = useState(false)
+  const [monthlyFileSheets, setMonthlyFileSheets] = useState<string[]>([])
+  const [monthlyFileWorkbook, setMonthlyFileWorkbook] = useState<XLSX.WorkBook | null>(null)
+  const [monthlyFileName, setMonthlyFileName] = useState('')
 
   const [recent, setRecent] = useState<Row[]>([])
   const [loadingRecent, setLoadingRecent] = useState(true)
@@ -216,6 +224,104 @@ export default function GrowthInput() {
     })
   }
 
+  /** Turns a worksheet into the same tab-separated text the paste box expects, and pre-fills the year from a "20XX Growth"-style sheet name. */
+  function loadSheetIntoImport(wb: XLSX.WorkBook, sheetName: string) {
+    const sheet = wb.Sheets[sheetName]
+    if (!sheet) return
+    const tsv = XLSX.utils.sheet_to_csv(sheet, { FS: '\t', blankrows: false })
+    setMonthlyImportText(tsv)
+    const yearMatch = sheetName.match(/\d{4}/)
+    if (yearMatch) setMonthlyImportYear(Number(yearMatch[0]))
+    setShowMonthlyImport(true)
+  }
+
+  function handleMonthlySheetPick(sheetName: string) {
+    if (!monthlyFileWorkbook) return
+    loadSheetIntoImport(monthlyFileWorkbook, sheetName)
+  }
+
+  async function handleMonthlyFile(file: File) {
+    try {
+      const buf = await file.arrayBuffer()
+      const wb = XLSX.read(buf, { type: 'array', cellDates: true })
+      const sheetNames = wb.SheetNames
+      setMonthlyFileWorkbook(wb)
+      setMonthlyFileSheets(sheetNames)
+      setMonthlyFileName(file.name)
+
+      // Prefer a "20XX Growth"-style sheet over things like "The Model" or "SHORTS".
+      const growthSheets = sheetNames.filter((n) => /growth/i.test(n))
+      const best =
+        growthSheets.find((n) => n.includes(String(monthlyImportYear))) ??
+        growthSheets[growthSheets.length - 1] ??
+        sheetNames[0]
+
+      if (best) loadSheetIntoImport(wb, best)
+      toast(`Loaded "${file.name}" — check the sheet and year below, then Import.`, 'success')
+    } catch {
+      toast('Could not read that file. Make sure it\'s a .xlsx or .xls file.', 'error')
+    }
+  }
+
+  async function handleMonthlyImport() {
+    if (!profile || !clientId) return
+    setMonthlyImporting(true)
+    const { rows, unmatchedColumns, matchedPlatforms, monthsFound, monthLabelsSeen } = parseMonthlyWideReport(monthlyImportText, {
+      clientId,
+      createdBy: profile.id,
+      year: monthlyImportYear,
+      platforms: platforms.map((p) => ({ id: p.id, name: p.name })),
+    })
+
+    if (rows.length === 0) {
+      setMonthlyImporting(false)
+      if (monthLabelsSeen === 0) {
+        toast(
+          "No month rows recognized — make sure you included both header rows and at least one \"<Month> Total\" row.",
+          'error'
+        )
+      } else if (matchedPlatforms.length === 0) {
+        toast(
+          unmatchedColumns.length > 0
+            ? `Found ${monthLabelsSeen} month row(s), but none of these columns match a platform for this client: ${unmatchedColumns.join(', ')}. Add them from the Platforms page first, or rename to match.`
+            : `Found ${monthLabelsSeen} month row(s), but no platforms are set up for this client yet — add them from the Platforms page first.`,
+          'error'
+        )
+      } else {
+        toast(`Found ${monthLabelsSeen} month row(s) and matched your platforms, but every value was 0 — double check you copied the right rows.`, 'error')
+      }
+      return
+    }
+
+    const { error } = await supabase.from('weekly_metrics').upsert(rows, { onConflict: 'client_id,platform_id,week_start' })
+    setMonthlyImporting(false)
+
+    if (error) {
+      toast(`Couldn't import: ${error.message}`, 'error')
+      return
+    }
+
+    await supabase.from('activity_logs').insert({
+      user_id: profile.id,
+      client_id: clientId,
+      action: `Imported monthly report (${monthsFound} month${monthsFound > 1 ? 's' : ''})`,
+      target: `Year ${monthlyImportYear}`,
+    })
+
+    const monthWord = monthsFound === 1 ? 'month' : 'months'
+    if (unmatchedColumns.length > 0) {
+      toast(`Imported ${monthsFound} ${monthWord}. Skipped (no matching platform): ${unmatchedColumns.join(', ')}.`, 'error')
+    } else {
+      toast(`Imported ${monthsFound} ${monthWord} across ${new Set(rows.map((r) => r.platform_id)).size} platform(s).`, 'success')
+    }
+    setMonthlyImportText('')
+    setShowMonthlyImport(false)
+    setMonthlyFileSheets([])
+    setMonthlyFileWorkbook(null)
+    setMonthlyFileName('')
+    loadRecent()
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!profile || !clientId) return
@@ -337,6 +443,102 @@ export default function GrowthInput() {
               </div>
             </Field>
           </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-0 flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-ink-800">Import Monthly Report</h2>
+              <p className="text-xs text-ink-500 mt-0.5">Upload a "20XX Growth"-style workbook, or paste the two header rows plus your monthly totals.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleMonthlyFile(file)
+                    e.target.value = ''
+                  }}
+                />
+                <span className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full text-sm font-medium bg-white text-ink-800 border border-ink-200 hover:bg-pine-50 cursor-pointer">
+                  <FileUp className="h-3.5 w-3.5" />
+                  Upload Excel File
+                </span>
+              </label>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setShowMonthlyImport((v) => !v)}>
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                {showMonthlyImport ? 'Hide' : 'Paste Instead'}
+              </Button>
+            </div>
+          </CardHeader>
+          {showMonthlyImport && (
+            <CardContent className="pt-0">
+              <div className="mt-3 flex flex-col gap-3 bg-ink-50 border border-ink-100 rounded-md p-3">
+                <div className="flex items-end gap-3 flex-wrap">
+                  <Field label="Year for these rows">
+                    <Input
+                      type="number"
+                      className="w-28"
+                      value={monthlyImportYear}
+                      onChange={(e) => setMonthlyImportYear(Number(e.target.value) || monthlyImportYear)}
+                    />
+                  </Field>
+                  {monthlyFileSheets.length > 1 && (
+                    <Field label={`Sheet (from ${monthlyFileName})`}>
+                      <Select
+                        className="w-56"
+                        onChange={(e) => handleMonthlySheetPick(e.target.value)}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>
+                          Choose a sheet…
+                        </option>
+                        {monthlyFileSheets.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  )}
+                </div>
+                <p className="text-xs text-ink-500">
+                  Uploading a file fills this in automatically from its "20XX Growth" sheet. To paste instead, select the
+                  header row through your last "Month Total" row in the sheet, copy, and paste below. Platform names must
+                  already exist here (add them from the Platforms page first) — anything else gets skipped and listed
+                  after import.
+                </p>
+                <Textarea
+                  rows={6}
+                  placeholder={'Week or Month\tTotals\t\tAverages\t...\nWeek or Month\tViews\tFollowers\t...\nJanuary Total\t179155\t1256\t...'}
+                  value={monthlyImportText}
+                  onChange={(e) => setMonthlyImportText(e.target.value)}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setMonthlyImportText('')
+                      setShowMonthlyImport(false)
+                      setMonthlyFileSheets([])
+                      setMonthlyFileWorkbook(null)
+                      setMonthlyFileName('')
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="button" size="sm" loading={monthlyImporting} onClick={handleMonthlyImport}>
+                    Import
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          )}
         </Card>
 
         <Card>

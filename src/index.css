@@ -22,4 +22,19 @@
   .scrollbar-thin::-webkit-scrollbar-thumb {
     @apply bg-ink-200 rounded-full;
   }
+
+  /* Brand wordmark: Fredoka, green fill, white outline. Used in the
+     sidebar, mobile topbar, and login screen so the branding stays
+     consistent everywhere the app name appears. */
+  .brand-title {
+    font-family: 'Fredoka', 'Inter', sans-serif;
+    font-weight: 600;
+    color: theme('colors.pine.600');
+    -webkit-text-stroke: 1px #fff;
+    paint-order: stroke fill;
+    letter-spacing: 0.01em;
+  }
+  .brand-title-lg {
+    -webkit-text-stroke: 2px #fff;
+  }
 }

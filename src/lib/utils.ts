@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { format, parseISO, getISOWeek, startOfISOWeek } from 'date-fns'
+import { MONTH_NAMES } from '../types/database'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -212,4 +213,182 @@ export function describeCorrelation(r: number | null): string {
   const strength = abs >= 0.7 ? 'Strong' : abs >= 0.4 ? 'Moderate' : abs >= 0.2 ? 'Weak' : 'No real'
   const direction = r >= 0 ? 'positive' : 'negative'
   return abs < 0.2 ? 'No real correlation' : `${strength} ${direction} correlation`
+}
+
+// ---------------------------------------------------------------------
+// SJ Content Tracker "2026 Growth" sheet importer — parses that exact
+// two-header-row, wide monthly layout (Totals/Averages columns, then a
+// Views+Followers-style column pair per platform — YouTube being a
+// 3-column LV/SV/Subs exception, LinkedIn using "Conn." instead of
+// "Foll.", Podcast using "Downloads", Newsletter using "Opens"/"Subs")
+// straight out of a copy-paste from Excel/Google Sheets.
+// ---------------------------------------------------------------------
+
+const MONTH_NAMES_FULL = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december',
+]
+
+interface MonthlyImportRow {
+  client_id: string
+  platform_id: string
+  week_start: string
+  year: number
+  month: string
+  week: number
+  views: number
+  new_audience: number
+  created_by: string
+}
+
+interface MonthlyImportResult {
+  rows: MonthlyImportRow[]
+  matchedPlatforms: string[]
+  unmatchedColumns: string[]
+  monthsFound: number
+  /** Rows where column A matched a "<Month> Total" label, regardless of whether any platform/data matched. Used to tell "bad paste" apart from "no matching platforms" or "all-zero data". */
+  monthLabelsSeen: number
+}
+
+function splitCells(line: string): string[] {
+  return line.includes('\t') ? line.split('\t') : line.split(',')
+}
+
+/**
+ * Parses text copy-pasted straight from the "2026 Growth" sheet (or any
+ * sheet following the same two-header-row layout) into weekly_metrics
+ * upsert rows, one per client+platform+month.
+ */
+export function parseMonthlyWideReport(
+  text: string,
+  opts: { clientId: string; createdBy: string; year: number; platforms: { id: string; name: string }[] }
+): MonthlyImportResult {
+  const lines = text.split('\n').map((l) => l.replace(/\r$/, '')).filter((l) => l.trim() !== '')
+  if (lines.length < 3) return { rows: [], matchedPlatforms: [], unmatchedColumns: [], monthsFound: 0, monthLabelsSeen: 0 }
+
+  const categoryRaw = splitCells(lines[0])
+  const subheader = splitCells(lines[1])
+
+  // Forward-fill merged-cell blanks in the category row.
+  const category: string[] = []
+  let last = ''
+  for (const c of categoryRaw) {
+    const v = c.trim()
+    if (v) last = v
+    category.push(last)
+  }
+
+  // Stop at the second "Week or Month" column (start of the VPF/FPD block).
+  let endCol = subheader.length
+  for (let i = 1; i < subheader.length; i++) {
+    if (subheader[i]?.trim().toLowerCase() === 'week or month') {
+      endCol = i
+      break
+    }
+  }
+
+  // Group consecutive columns sharing the same category label.
+  const groups: { name: string; cols: number[] }[] = []
+  let i = 1
+  while (i < endCol) {
+    const name = category[i] ?? ''
+    const cols = [i]
+    let j = i + 1
+    while (j < endCol && (category[j] ?? '') === name) {
+      cols.push(j)
+      j++
+    }
+    groups.push({ name, cols })
+    i = j
+  }
+
+  function matchPlatform(name: string) {
+    const clean = name.trim().toLowerCase().replace(/\s+/g, '')
+    if (!clean || clean === 'totals' || clean === 'averages') return undefined
+    return opts.platforms.find((p) => {
+      const pClean = p.name.toLowerCase().replace(/\s+/g, '')
+      return pClean === clean || pClean.includes(clean) || clean.includes(pClean)
+    })
+  }
+
+  type MetricGroup = { platformId: string; platformName: string; viewCols: number[]; audienceCol: number }
+  const metricGroups: MetricGroup[] = []
+  const unmatchedColumns: string[] = []
+
+  for (const g of groups) {
+    if (!g.name || g.name.toLowerCase() === 'totals' || g.name.toLowerCase() === 'averages') continue
+    const subs = g.cols.map((c) => (subheader[c] ?? '').trim())
+
+    let viewCols: number[] | null = null
+    let audienceCol: number | null = null
+    if (subs.length === 3 && subs[2].toLowerCase() === 'subs') {
+      // YouTube-style: LV + SV (views), Subs (audience)
+      viewCols = [g.cols[0], g.cols[1]]
+      audienceCol = g.cols[2]
+    } else if (subs.length === 2 && ['views', 'downloads', 'opens'].includes(subs[0].toLowerCase())) {
+      viewCols = [g.cols[0]]
+      audienceCol = g.cols[1]
+    } else {
+      continue // a ratio/average group (VPF, FPD, etc.) — not raw data, skip
+    }
+
+    const platform = matchPlatform(g.name)
+    if (!platform) {
+      unmatchedColumns.push(g.name)
+      continue
+    }
+    metricGroups.push({ platformId: platform.id, platformName: platform.name, viewCols, audienceCol })
+  }
+
+  const rows: MonthlyImportRow[] = []
+  const matchedPlatforms = new Set<string>()
+  let monthsFound = 0
+  let monthLabelsSeen = 0
+
+  for (let r = 2; r < lines.length; r++) {
+    const cells = splitCells(lines[r])
+    const label = (cells[0] ?? '').trim().toLowerCase().replace(/\s*total\s*$/, '')
+    const monthIndex = MONTH_NAMES_FULL.indexOf(label)
+    if (monthIndex === -1) continue
+    monthLabelsSeen++
+
+    const num = (col: number) => {
+      const raw = (cells[col] ?? '').replace(/,/g, '').trim()
+      const n = parseFloat(raw)
+      return Number.isFinite(n) ? n : 0
+    }
+
+    let anyData = false
+    const monthRows: MonthlyImportRow[] = []
+    for (const mg of metricGroups) {
+      const views = mg.viewCols.reduce((s, c) => s + num(c), 0)
+      const new_audience = num(mg.audienceCol)
+      if (views !== 0 || new_audience !== 0) anyData = true
+      const week_start = `${opts.year}-${String(monthIndex + 1).padStart(2, '0')}-01`
+      monthRows.push({
+        client_id: opts.clientId,
+        platform_id: mg.platformId,
+        week_start,
+        year: opts.year,
+        month: MONTH_NAMES[monthIndex],
+        week: weekMeta(week_start).week,
+        views,
+        new_audience,
+        created_by: opts.createdBy,
+      })
+      matchedPlatforms.add(mg.platformName)
+    }
+    if (anyData) {
+      rows.push(...monthRows)
+      monthsFound++
+    }
+  }
+
+  return {
+    rows,
+    matchedPlatforms: Array.from(matchedPlatforms),
+    unmatchedColumns: Array.from(new Set(unmatchedColumns)),
+    monthsFound,
+    monthLabelsSeen,
+  }
 }

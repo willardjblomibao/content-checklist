@@ -20,6 +20,7 @@ import GrowthMonthly from './pages/growth/GrowthMonthly'
 import ActivityLogs from './pages/growth/ActivityLogs'
 import GrowthReports from './pages/growth/GrowthReports'
 import ContentCorrelation from './pages/growth/ContentCorrelation'
+import PlatformComparison from './pages/growth/PlatformComparison'
 
 function RoleDashboard() {
   const { isAdmin, loading } = useAuth()
@@ -46,6 +47,7 @@ function AppRoutes() {
         <Route path="/growth/monthly" element={<GrowthMonthly />} />
         <Route path="/growth/reports" element={<GrowthReports />} />
         <Route path="/growth/correlation" element={<ContentCorrelation />} />
+        <Route path="/growth/compare" element={<PlatformComparison />} />
         <Route path="/growth/activity" element={<ActivityLogs />} />
         <Route
           path="/growth/platforms"

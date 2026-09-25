@@ -41,8 +41,9 @@ export default function Login() {
           <div className="h-10 w-10 rounded-md bg-gradient-to-b from-pine-500 to-pine-700 flex items-center justify-center mb-3 shadow-soft">
             <Film className="h-5 w-5 text-white" />
           </div>
-          <h1 className="text-lg font-semibold text-ink-900">Content Team Tracker</h1>
-          <p className="text-sm text-ink-500 mt-1">Sign in to log or review production</p>
+          <h1 className="brand-title brand-title-lg text-3xl">Partnerlee</h1>
+          <p className="text-ink-400 text-[11px] font-medium tracking-wide uppercase -mt-1">Content Tracker</p>
+          <p className="text-sm text-ink-500 mt-2">Sign in to log or review production</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white border border-ink-100 rounded-xl2 shadow-soft p-6 flex flex-col gap-4">

@@ -24,10 +24,13 @@ export function AppLayout() {
       {/* Mobile topbar */}
       <div className="md:hidden fixed top-0 inset-x-0 z-30 h-14 bg-white border-b border-ink-100 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-md bg-pine-800 flex items-center justify-center">
+          <div className="h-6 w-6 rounded-md bg-pine-800 flex items-center justify-center shrink-0">
             <Film className="h-3.5 w-3.5 text-white" />
           </div>
-          <span className="text-ink-900 font-semibold text-sm">Content Tracker</span>
+          <div className="flex flex-col leading-none">
+            <span className="brand-title text-sm">Partnerlee</span>
+            <span className="text-ink-400 text-[8px] font-medium tracking-wide uppercase">Content Tracker</span>
+          </div>
         </div>
         <button onClick={() => setMobileOpen(true)} className="text-ink-700 p-1.5" aria-label="Open menu">
           <Menu className="h-5 w-5" />

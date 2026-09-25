@@ -15,6 +15,7 @@ import {
   Activity,
   FileDown,
   Zap,
+  GitCompare,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn, initials } from '../../lib/utils'
@@ -26,6 +27,7 @@ export const assistantNav = [
   { to: '/growth', label: 'Growth', icon: TrendingUp, end: true },
   { to: '/growth/input', label: 'Weekly Growth', icon: PlusSquare },
   { to: '/growth/monthly', label: 'Monthly Summary', icon: CalendarRange },
+  { to: '/growth/compare', label: 'Platform vs Platform', icon: GitCompare },
   { to: '/growth/correlation', label: 'Content Impact', icon: Zap },
   { to: '/growth/reports', label: 'Growth Reports', icon: FileDown },
   { to: '/growth/activity', label: 'Activity Logs', icon: Activity },
@@ -39,6 +41,7 @@ export const adminNav = [
   { to: '/growth', label: 'Growth', icon: TrendingUp, end: true },
   { to: '/growth/input', label: 'Weekly Growth', icon: PlusSquare },
   { to: '/growth/monthly', label: 'Monthly Summary', icon: CalendarRange },
+  { to: '/growth/compare', label: 'Platform vs Platform', icon: GitCompare },
   { to: '/growth/correlation', label: 'Content Impact', icon: Zap },
   { to: '/growth/reports', label: 'Growth Reports', icon: FileDown },
   { to: '/growth/platforms', label: 'Platforms', icon: Radio },
@@ -56,10 +59,13 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex md:w-60 md:flex-col shrink-0 bg-white text-ink-500 h-screen sticky top-0 border-r border-ink-100">
       <div className="flex items-center gap-2 px-5 h-16">
-        <div className="h-8 w-8 rounded-lg bg-pine-800 flex items-center justify-center">
+        <div className="h-8 w-8 rounded-lg bg-pine-800 flex items-center justify-center shrink-0">
           <Film className="h-4 w-4 text-white" />
         </div>
-        <span className="text-ink-900 font-semibold text-sm tracking-tight">Content Tracker</span>
+        <div className="flex flex-col leading-none min-w-0">
+          <span className="brand-title text-base truncate">Partnerlee</span>
+          <span className="text-ink-400 text-[10px] font-medium tracking-wide uppercase mt-0.5 truncate">Content Tracker</span>
+        </div>
       </div>
 
       <nav className="flex-1 px-3 py-3 flex flex-col gap-1 overflow-y-auto">

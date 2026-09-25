@@ -1,7 +1,7 @@
 // Bump this whenever you add a new batch of items below — that's what
 // makes the popup show up again for everyone, exactly once, until they
 // dismiss it. Old version strings are harmless to leave in git history.
-export const WHATS_NEW_VERSION = '2026-09-growth-tracker-3'
+export const WHATS_NEW_VERSION = '2026-09-growth-tracker-5'
 
 export interface WhatsNewItem {
   title: string
@@ -9,6 +9,16 @@ export interface WhatsNewItem {
 }
 
 export const WHATS_NEW_ITEMS: WhatsNewItem[] = [
+  {
+    title: '📥 Import Monthly Report',
+    description:
+      'Weekly Growth Input now has an "Import Monthly Report" option that reads a copy-paste straight from a "20XX Growth"-style sheet (two header rows, per-platform Views/Followers columns) — no reformatting needed.',
+  },
+  {
+    title: '🆚 Platform vs Platform',
+    description:
+      'Pick any two platforms for a client and compare Views, Followers, Views-per-Follower and Followers-per-Day side by side, month by month — with CSV, Excel and PDF export built in.',
+  },
   {
     title: '⚡ Content Impact',
     description:
@@ -21,13 +31,5 @@ export const WHATS_NEW_ITEMS: WhatsNewItem[] = [
   {
     title: '📊 12-KPI Growth Dashboard',
     description: 'Platform and month-range filters, plus Peak Audience, Audience Added, Best Week, and more — matching the original workbook\'s DASHBOARD tab.',
-  },
-  {
-    title: '🚩 Anomaly checks',
-    description: 'Weekly Growth Input now flags a negative-audience week or a views spike, the same way the spreadsheet\'s Check column did.',
-  },
-  {
-    title: '📁 CSV, Excel & PDF exports',
-    description: 'Growth Reports can export any date range for a client in the format you need.',
   },
 ]
