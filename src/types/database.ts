@@ -151,24 +151,6 @@ export interface ClientShareLink {
   revoked_at: string | null
 }
 
-/** Row shape returned by the get_client_report_logs RPC (no notes, no assistant identity). */
-export interface ClientReportLog {
-  id: string
-  production_date: string
-  videos_edited_count: number
-  videos_edited_status: ProductionStatus
-  videos_reedited_count: number
-  videos_reedited_status: ProductionStatus
-  carousels_edited_count: number
-  carousels_edited_status: ProductionStatus
-  carousels_reedited_count: number
-  carousels_reedited_status: ProductionStatus
-  text_posts_prepared_count: number
-  text_posts_prepared_status: ProductionStatus
-  text_posts_reedited_count: number
-  text_posts_reedited_status: ProductionStatus
-}
-
 /** Monday-start ISO week label helper input, used by the weekly input form. */
 export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',

@@ -187,8 +187,9 @@ function ShareLinkDialog({ client, onClose }: { client: Client; onClose: () => v
     <Dialog open onClose={onClose} title={`Share link — ${client.name}`}>
       <div className="flex flex-col gap-4">
         <p className="text-sm text-ink-500">
-          Anyone with this link can view (and filter, print, or export) {client.name}'s production report — no
-          account needed. It never shows other clients' data or internal notes.
+          Anyone with this link can view (and filter, print, or export) {client.name}'s Growth Tracker report —
+          dashboard, monthly summary, content impact, and platform comparison — no account needed. It never shows
+          other clients' data, the raw production log, or internal notes.
         </p>
 
         {link === undefined ? (

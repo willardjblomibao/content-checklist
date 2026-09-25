@@ -61,22 +61,26 @@ only option available without a server. It works well, but two things to know:
 
 ## Client view-only report links
 
-Each client (Clients page → the link icon on a row) can get a **view-only report
-link** — no client login required:
+Each client (Clients page → the link icon on a row) can get a **view-only Growth
+Tracker report** — no client login required. It mirrors the internal Growth
+Tracker module (Dashboard, Monthly Summary, Content Impact, Platform vs
+Platform), read-only, with the same filters, charts, and tables:
 
-- Filterable by date range, content type, and status
-- Printable (`Print` opens the browser print dialog with filters hidden) and
-  exportable to CSV
-- Shows only that one client's data — never other clients, never internal
-  notes, never which assistant did the work
+- Filterable per tab (year, platform, month range, comparison year, etc.)
+- Printable (`Print this view` opens the browser print dialog with filters and
+  tab nav hidden) and exportable to CSV per tab
+- Shows only that one client's data — never other clients, never the raw
+  production log, never internal notes, never which assistant did the work
 - Revocable any time; generating a new link retires the old one automatically
 
 This is implemented as a random token (`client_share_links` table) checked by
-two Postgres RPCs (`get_client_report_info`, `get_client_report_logs`) rather
-than RLS on the base tables, so anonymous visitors never get direct table
-access — only whatever those two functions choose to return. Run
-`supabase/migrations/006_client_share_links.sql` after the base schema to add
-this.
+security-definer Postgres RPCs (`get_client_report_info`,
+`get_client_growth_platforms`, `get_client_growth_weekly_metrics`,
+`get_client_growth_production_summary`) rather than RLS on the base tables, so
+anonymous visitors never get direct table access — only whatever those
+functions choose to return. Run `supabase/migrations/006_client_share_links.sql`
+and `supabase/migrations/007_client_growth_report.sql` after the base schema
+(and after the Growth Tracker migrations) to add this.
 
 ## CSV import — mapping your spreadsheet
 
