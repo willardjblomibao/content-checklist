@@ -21,6 +21,7 @@ import ActivityLogs from './pages/growth/ActivityLogs'
 import GrowthReports from './pages/growth/GrowthReports'
 import ContentCorrelation from './pages/growth/ContentCorrelation'
 import PlatformComparison from './pages/growth/PlatformComparison'
+import ClientReport from './pages/ClientReport'
 
 function RoleDashboard() {
   const { isAdmin, loading } = useAuth()
@@ -32,6 +33,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      {/* Public, token-gated — no login, no admin layout. See ClientReport.tsx. */}
+      <Route path="/client-report/:token" element={<ClientReport />} />
       <Route
         element={
           <ProtectedRoute>

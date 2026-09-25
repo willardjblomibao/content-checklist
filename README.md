@@ -59,6 +59,25 @@ only option available without a server. It works well, but two things to know:
   `supabase.auth.admin.createUser()` server-side. That's a ~20-line function if you
   want to add it later; the current dialog is a fully working stand-in.
 
+## Client view-only report links
+
+Each client (Clients page → the link icon on a row) can get a **view-only report
+link** — no client login required:
+
+- Filterable by date range, content type, and status
+- Printable (`Print` opens the browser print dialog with filters hidden) and
+  exportable to CSV
+- Shows only that one client's data — never other clients, never internal
+  notes, never which assistant did the work
+- Revocable any time; generating a new link retires the old one automatically
+
+This is implemented as a random token (`client_share_links` table) checked by
+two Postgres RPCs (`get_client_report_info`, `get_client_report_logs`) rather
+than RLS on the base tables, so anonymous visitors never get direct table
+access — only whatever those two functions choose to return. Run
+`supabase/migrations/006_client_share_links.sql` after the base schema to add
+this.
+
 ## CSV import — mapping your spreadsheet
 
 Your existing file has one tab per assistant (`Regine DG`, `Jasmin`, `Nimfa`) with
