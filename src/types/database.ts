@@ -25,7 +25,8 @@ export interface Client {
 export interface ProductionLog {
   id: string
   user_id: string
-  client_id: string
+  /** Null when is_other_work is true — other-work entries aren't tied to a client. */
+  client_id: string | null
   production_date: string
   videos_edited_count: number
   videos_edited_status: ProductionStatus
@@ -40,6 +41,8 @@ export interface ProductionLog {
   text_posts_reedited_count: number
   text_posts_reedited_status: ProductionStatus
   notes: string | null
+  /** A day logged as non-client work (internal tasks, training, admin, etc.) — still counts toward the streak. */
+  is_other_work: boolean
   created_at: string
   updated_at: string
 }
@@ -70,6 +73,20 @@ export function totalItems(log: Pick<ProductionLog,
     log.text_posts_prepared_count +
     log.text_posts_reedited_count
   )
+}
+
+/**
+ * Value to feed into the streak/heatmap counters for one log. Normally this
+ * is just the production item count — but a client-less "other work" entry
+ * has zero production counts by definition, so without this it would look
+ * like an inactive day and could break the streak even though real work was
+ * logged. One point is enough to register the day as active.
+ */
+export function logActivityCount(log: Pick<ProductionLog,
+  'videos_edited_count' | 'videos_reedited_count' | 'carousels_edited_count' |
+  'carousels_reedited_count' | 'text_posts_prepared_count' | 'text_posts_reedited_count' | 'is_other_work'>): number {
+  const items = totalItems(log)
+  return items > 0 ? items : log.is_other_work ? 1 : 0
 }
 
 // =====================================================================

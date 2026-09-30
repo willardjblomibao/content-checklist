@@ -69,7 +69,8 @@ export default function Reports() {
 
   const filteredLogs = useMemo(() => {
     return logs.filter((l) => {
-      if (filterClient && l.client_id !== filterClient) return false
+      if (filterClient === 'other_work' && !(l as any).is_other_work) return false
+      if (filterClient && filterClient !== 'other_work' && l.client_id !== filterClient) return false
       if (filterAssistant && l.user_id !== filterAssistant) return false
       if (filterContentType && ((l as any)[filterContentType] ?? 0) === 0) return false
       if (filterStatus) {
@@ -105,10 +106,10 @@ export default function Reports() {
   const byClient = useMemo(() => {
     const map = new Map<string, number>()
     for (const l of filteredLogs) {
-      const name = l.client?.name ?? 'Unknown'
+      const name = (l as any).is_other_work ? 'Other Work' : l.client?.name ?? 'Unknown'
       map.set(name, (map.get(name) ?? 0) + totalItems(l))
     }
-    return Array.from(map, ([name, total]) => ({ name, total }))
+    return Array.from(map, ([name, total]) => ({ name, total })).filter((d) => d.total > 0)
   }, [filteredLogs])
 
   const byContentType = useMemo(() => {
@@ -153,7 +154,7 @@ export default function Reports() {
     const rows = filteredLogs.map((l) => ({
       Date: l.production_date,
       Assistant: l.profile?.full_name ?? '',
-      Client: l.client?.name ?? '',
+      Client: (l as any).is_other_work ? 'Other Work' : l.client?.name ?? '',
       ...Object.fromEntries(PRODUCTION_FIELDS.map((f) => [f.label, (l as any)[f.countKey]])),
       'Total Items': totalItems(l),
       Notes: l.notes ?? '',
@@ -305,6 +306,7 @@ export default function Reports() {
           <Field label="Client">
             <Select value={filterClient} onChange={(e) => setFilterClient(e.target.value)}>
               <option value="">All clients</option>
+              <option value="other_work">Other Work</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}

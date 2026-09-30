@@ -59,6 +59,26 @@ only option available without a server. It works well, but two things to know:
   `supabase.auth.admin.createUser()` server-side. That's a ~20-line function if you
   want to add it later; the current dialog is a fully working stand-in.
 
+## Other Work entries (no client, still counts toward your streak)
+
+The Daily Log form has a "Client Work" / "Other Work" toggle. Other Work is
+for days that weren't client production — internal tasks, training, admin,
+helping a teammate, etc. — where picking a client and typing production
+counts wouldn't make sense:
+
+- No client is required (`client_id` is left null)
+- Production counts/statuses are hidden and saved as zero
+- The Notes box becomes required — a short description of what was worked on
+- It still counts as an active day for the streak and contribution heatmap,
+  so logging a non-production day doesn't cost you your streak
+
+Run `supabase/migrations/008_other_work_logs.sql` after the earlier
+migrations to add this (it makes `production_logs.client_id` nullable and
+adds an `is_other_work` flag with a check constraint enforcing that a row is
+either normal client production or a flagged, client-less Other Work entry —
+never neither, never both). History and Reports both got an "Other Work"
+filter option and label to match.
+
 ## Client view-only report links
 
 Each client (Clients page → the link icon on a row) can get a **view-only Growth

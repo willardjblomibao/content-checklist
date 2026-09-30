@@ -6,7 +6,7 @@ import { usePresence } from '../contexts/PresenceContext'
 import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/KpiCards'
 import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap'
 import { Button, Card, EmptyState, PageSpinner } from '../components/ui/primitives'
-import { PRODUCTION_FIELDS, totalItems, type Profile, type ProductionLogWithRelations } from '../types/database'
+import { PRODUCTION_FIELDS, totalItems, logActivityCount, type Profile, type ProductionLogWithRelations } from '../types/database'
 import { formatDate, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
 
 function rangeToDates(range: RangeKey): { from: string; to: string } {
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
     supabase
       .from('production_logs')
       .select(
-        'production_date, videos_edited_count, videos_reedited_count, carousels_edited_count, carousels_reedited_count, text_posts_prepared_count, text_posts_reedited_count'
+        'production_date, videos_edited_count, videos_reedited_count, carousels_edited_count, carousels_reedited_count, text_posts_prepared_count, text_posts_reedited_count, is_other_work'
       )
       .gte('production_date', start.toISOString().slice(0, 10))
       .then(({ data }) => setHeatmapLogs((data ?? []) as unknown as ProductionLogWithRelations[]))
@@ -66,7 +66,7 @@ export default function AdminDashboard() {
   const heatmapCounts = useMemo(() => {
     const map = new Map<string, number>()
     for (const log of heatmapLogs) {
-      map.set(log.production_date, (map.get(log.production_date) ?? 0) + totalItems(log))
+      map.set(log.production_date, (map.get(log.production_date) ?? 0) + logActivityCount(log))
     }
     return map
   }, [heatmapLogs])
@@ -232,7 +232,7 @@ export default function AdminDashboard() {
                           <p className="text-xs text-ink-500">
                             <span className="font-medium text-ink-700">{log.profile?.full_name ?? 'Unknown'}</span>
                             {' · '}
-                            {log.client?.name ?? '—'}
+                            {(log as any).is_other_work ? 'Other Work' : log.client?.name ?? '—'}
                             {' · '}
                             {formatDate(log.production_date)}
                           </p>

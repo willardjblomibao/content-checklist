@@ -36,7 +36,8 @@ export function useProductionLogs(filters: LogFilters) {
       )
 
     if (filters.userId) query = query.eq('user_id', filters.userId)
-    if (filters.clientId) query = query.eq('client_id', filters.clientId)
+    if (filters.clientId === 'other_work') query = query.eq('is_other_work', true)
+    else if (filters.clientId) query = query.eq('client_id', filters.clientId)
     if (filters.dateFrom) query = query.gte('production_date', filters.dateFrom)
     if (filters.dateTo) query = query.lte('production_date', filters.dateTo)
 

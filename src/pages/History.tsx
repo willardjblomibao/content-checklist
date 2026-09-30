@@ -66,7 +66,7 @@ export default function History() {
       Date: log.production_date,
       Day: dayOfWeek(log.production_date),
       Assistant: log.profile?.full_name ?? '',
-      Client: log.client?.name ?? '',
+      Client: (log as any).is_other_work ? 'Other Work' : log.client?.name ?? '',
       ...Object.fromEntries(
         PRODUCTION_FIELDS.map((f) => [f.label, (log as any)[f.countKey]])
       ),
@@ -116,6 +116,7 @@ export default function History() {
           <Field label="Client">
             <Select value={filters.clientId ?? ''} onChange={(e) => setFilter('clientId', e.target.value || undefined)}>
               <option value="">All clients</option>
+              <option value="other_work">Other Work</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -167,10 +168,14 @@ export default function History() {
                         {isAdmin && (
                           <td className="px-3 py-3 whitespace-nowrap text-ink-700">{log.profile?.full_name ?? '—'}</td>
                         )}
-                        <td className="px-3 py-3 whitespace-nowrap text-ink-700">{log.client?.name ?? '—'}</td>
+                        <td className="px-3 py-3 whitespace-nowrap text-ink-700">
+                          {(log as any).is_other_work ? <Badge variant="neutral">Other Work</Badge> : log.client?.name ?? '—'}
+                        </td>
                         <td className="px-3 py-3 text-right font-semibold text-ink-900">{totalItems(log)}</td>
                         <td className="px-3 py-3">
-                          {loggedFields.length === 0 ? (
+                          {(log as any).is_other_work ? (
+                            <span className="text-ink-300">—</span>
+                          ) : loggedFields.length === 0 ? (
                             <Badge variant="neutral">No items</Badge>
                           ) : (
                             <Badge variant={anyInProgress ? 'in_progress' : 'completed'} />

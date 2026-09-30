@@ -7,7 +7,7 @@ import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/
 import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap'
 import { StreakCard } from '../components/dashboard/StreakCard'
 import { Button, Card, EmptyState, PageSpinner, Badge } from '../components/ui/primitives'
-import { PRODUCTION_FIELDS, totalItems, type ProductionLogWithRelations } from '../types/database'
+import { PRODUCTION_FIELDS, totalItems, logActivityCount, type ProductionLogWithRelations } from '../types/database'
 import { formatDate, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
 
 function rangeToDates(range: RangeKey): { from: string; to: string } {
@@ -61,7 +61,7 @@ export default function AssistantDashboard() {
     supabase
       .from('production_logs')
       .select(
-        'production_date, videos_edited_count, videos_reedited_count, carousels_edited_count, carousels_reedited_count, text_posts_prepared_count, text_posts_reedited_count'
+        'production_date, videos_edited_count, videos_reedited_count, carousels_edited_count, carousels_reedited_count, text_posts_prepared_count, text_posts_reedited_count, is_other_work'
       )
       .eq('user_id', profile.id)
       .gte('production_date', start.toISOString().slice(0, 10))
@@ -71,7 +71,7 @@ export default function AssistantDashboard() {
   const heatmapCounts = useMemo(() => {
     const map = new Map<string, number>()
     for (const log of heatmapLogs) {
-      map.set(log.production_date, (map.get(log.production_date) ?? 0) + totalItems(log))
+      map.set(log.production_date, (map.get(log.production_date) ?? 0) + logActivityCount(log))
     }
     return map
   }, [heatmapLogs])
@@ -152,7 +152,7 @@ export default function AssistantDashboard() {
                   <div key={log.id} className="flex items-center justify-between px-5 py-3.5">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-ink-900 flex items-center gap-1.5">
-                        {log.client?.name ?? 'Unknown client'}
+                        {(log as any).is_other_work ? 'Other Work' : log.client?.name ?? 'Unknown client'}
                         {log.notes && (
                           <StickyNote className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-label="Has notes">
                             <title>{log.notes}</title>
@@ -163,7 +163,9 @@ export default function AssistantDashboard() {
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-sm font-semibold text-ink-800">{total} items</span>
-                      {loggedFields.length === 0 ? (
+                      {(log as any).is_other_work ? (
+                        <Badge variant="neutral">Other Work</Badge>
+                      ) : loggedFields.length === 0 ? (
                         <Badge variant="neutral">No items</Badge>
                       ) : (
                         <Badge variant={anyInProgress ? 'in_progress' : 'completed'} />
