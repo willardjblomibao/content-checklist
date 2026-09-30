@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, StickyNote } from 'lucide-react'
+import { Briefcase, Plus, StickyNote } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/KpiCards'
 import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap'
 import { StreakCard } from '../components/dashboard/StreakCard'
+import { OtherWorkPanel } from '../components/dashboard/OtherWorkPanel'
 import { Button, Card, EmptyState, PageSpinner, Badge } from '../components/ui/primitives'
 import { PRODUCTION_FIELDS, totalItems, logActivityCount, logClientLabel, type ProductionLogWithRelations } from '../types/database'
 import { formatDate, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
@@ -111,6 +112,13 @@ export default function AssistantDashboard() {
 
       {loading ? <PageSpinner /> : <KpiCards totals={totals} />}
 
+      {!loading && (
+        <div>
+          <h2 className="text-sm font-semibold text-ink-700 mb-3">Your Other Work</h2>
+          <OtherWorkPanel logs={logs} mode="self" />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">
           <h2 className="text-sm font-semibold text-ink-700 mb-3">Your Activity</h2>
@@ -148,9 +156,18 @@ export default function AssistantDashboard() {
                 const loggedFields = PRODUCTION_FIELDS.filter((f) => ((log as any)[f.countKey] ?? 0) > 0)
                 const total = loggedFields.reduce((sum, f) => sum + ((log as any)[f.countKey] ?? 0), 0)
                 const anyInProgress = loggedFields.some((f) => (log as any)[f.statusKey] === 'in_progress')
+                const isOther = (log as any).is_other_work
                 return (
-                  <div key={log.id} className="flex items-center justify-between px-5 py-3.5">
-                    <div className="min-w-0">
+                  <div
+                    key={log.id}
+                    className={`flex items-center justify-between gap-3 px-5 py-3.5 ${isOther ? 'bg-amber-50/50' : ''}`}
+                  >
+                    {isOther && (
+                      <div className="h-8 w-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                        <Briefcase className="h-4 w-4" aria-hidden="true" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-ink-900 flex items-center gap-1.5">
                         {logClientLabel(log as any, 'Unknown client')}
                         {log.notes && (
@@ -160,11 +177,16 @@ export default function AssistantDashboard() {
                         )}
                       </p>
                       <p className="text-xs text-ink-500 mt-0.5">{formatDate(log.production_date)}</p>
+                      {isOther && log.notes && (
+                        <p className="text-xs text-ink-600 mt-1 line-clamp-1">{log.notes}</p>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-sm font-semibold text-ink-800">{total} items</span>
-                      {(log as any).is_other_work ? (
-                        <Badge variant="neutral">Other Work</Badge>
+                      {!isOther && <span className="text-sm font-semibold text-ink-800">{total} items</span>}
+                      {isOther ? (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-600">
+                          Other Work
+                        </span>
                       ) : loggedFields.length === 0 ? (
                         <Badge variant="neutral">No items</Badge>
                       ) : (

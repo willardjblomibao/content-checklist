@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { usePresence } from '../contexts/PresenceContext'
 import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/KpiCards'
 import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap'
+import { OtherWorkPanel } from '../components/dashboard/OtherWorkPanel'
 import { Button, Card, EmptyState, PageSpinner } from '../components/ui/primitives'
 import { PRODUCTION_FIELDS, totalItems, logActivityCount, logClientLabel, type Profile, type ProductionLogWithRelations } from '../types/database'
 import { formatDate, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
@@ -75,7 +76,7 @@ export default function AdminDashboard() {
     setLoading(true)
     supabase
       .from('production_logs')
-      .select('*, profile:profiles(id, full_name, email)')
+      .select('*, client:clients(id, name, status), profile:profiles(id, full_name, email)')
       .gte('production_date', from)
       .lte('production_date', to)
       .then(({ data }) => {
@@ -101,12 +102,14 @@ export default function AdminDashboard() {
         totalsRow[f.countKey] = memberLogs.reduce((sum, l) => sum + ((l as any)[f.countKey] ?? 0), 0)
       }
       const total = Object.values(totalsRow).reduce((a, b) => a + b, 0)
-      return { member, totalsRow, total }
+      const otherWork = memberLogs.filter((l) => l.is_other_work).length
+      return { member, totalsRow, total, otherWork }
     })
     return rows.sort((a, b) => b.total - a.total)
   }, [team, logs])
 
   const teamTotal = perAssistant.reduce((sum, r) => sum + r.total, 0)
+  const teamOtherWork = perAssistant.reduce((sum, r) => sum + r.otherWork, 0)
 
   return (
     <div className="flex flex-col gap-6">
@@ -133,6 +136,11 @@ export default function AdminDashboard() {
       ) : (
         <>
           <KpiCards totals={totals} />
+
+          <div>
+            <h2 className="text-sm font-semibold text-ink-700 mb-3">Team Other Work</h2>
+            <OtherWorkPanel logs={logs} mode="team" />
+          </div>
 
           <div>
             <h2 className="text-sm font-semibold text-ink-700 mb-3">Team Activity</h2>
@@ -169,11 +177,12 @@ export default function AdminDashboard() {
                               {f.label}
                             </th>
                           ))}
+                          <th className="px-3 py-3 text-right whitespace-nowrap text-amber-600">Other Work</th>
                           <th className="px-5 py-3 text-right">Total</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {perAssistant.map(({ member, totalsRow, total }) => (
+                        {perAssistant.map(({ member, totalsRow, total, otherWork }) => (
                           <tr key={member.id} className="border-b border-ink-50 last:border-0">
                             <td className="px-5 py-3 font-medium text-ink-900 whitespace-nowrap">
                               <span className="inline-flex items-center gap-2">
@@ -192,6 +201,7 @@ export default function AdminDashboard() {
                                 {totalsRow[f.countKey]}
                               </td>
                             ))}
+                            <td className="px-3 py-3 text-right text-amber-600">{otherWork > 0 ? otherWork : '—'}</td>
                             <td className="px-5 py-3 text-right font-semibold text-ink-900">{total}</td>
                           </tr>
                         ))}
@@ -202,6 +212,7 @@ export default function AdminDashboard() {
                               {totals[f.countKey]}
                             </td>
                           ))}
+                          <td className="px-3 py-3 text-right text-amber-600">{teamOtherWork > 0 ? teamOtherWork : '—'}</td>
                           <td className="px-5 py-3 text-right">{teamTotal}</td>
                         </tr>
                       </tbody>

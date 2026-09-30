@@ -86,6 +86,12 @@ tagged internal work never shows up to clients. History/Reports/dashboards
 show these as "Other Work · Client name", and picking that client in a filter
 includes them.
 
+**Dashboards:** Other Work has its own amber-styled section, separate from the
+green production widgets. Assistants see *Your Other Work* (their entries in the
+selected range, with client tag and what they worked on). Admins see *Team Other
+Work* (entries per assistant plus recent entries with names) and an extra
+"Other Work" column in the Individual Performance table.
+
 ## Client view-only report links
 
 Each client (Clients page → the link icon on a row) can get a **view-only Growth
