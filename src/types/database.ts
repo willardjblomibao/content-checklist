@@ -25,7 +25,7 @@ export interface Client {
 export interface ProductionLog {
   id: string
   user_id: string
-  /** Null when is_other_work is true — other-work entries aren't tied to a client. */
+  /** Required for client work. Optional for other work — an other-work entry may be tagged to a client, or left null. */
   client_id: string | null
   production_date: string
   videos_edited_count: number
@@ -87,6 +87,18 @@ export function logActivityCount(log: Pick<ProductionLog,
   'carousels_reedited_count' | 'text_posts_prepared_count' | 'text_posts_reedited_count' | 'is_other_work'>): number {
   const items = totalItems(log)
   return items > 0 ? items : log.is_other_work ? 1 : 0
+}
+
+/**
+ * Display label for a log's client column. Other-work entries read
+ * "Other Work" or "Other Work · Client" when the assistant tagged one.
+ */
+export function logClientLabel(
+  log: { is_other_work?: boolean; client?: { name: string } | null },
+  fallback = '—'
+): string {
+  if (log.is_other_work) return log.client?.name ? `Other Work · ${log.client.name}` : 'Other Work'
+  return log.client?.name ?? fallback
 }
 
 // =====================================================================
@@ -193,7 +205,7 @@ export interface Database {
         Row: ProductionLog
         Insert: Partial<ProductionLog> & {
           user_id: string
-          client_id: string
+          client_id?: string | null
           production_date: string
         }
         Update: Partial<ProductionLog>

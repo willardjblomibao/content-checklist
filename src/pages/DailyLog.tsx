@@ -119,6 +119,7 @@ export default function DailyLog() {
         toast('Say what you worked on — it\'s required for an Other Work entry.', 'error')
         return
       }
+      // client_id is optional here — blank means "not tied to a client".
     } else {
       if (!form.client_id) {
         toast('Please select a client.', 'error')
@@ -136,7 +137,7 @@ export default function DailyLog() {
     const payload = form.is_other_work
       ? {
           production_date: form.production_date,
-          client_id: null,
+          client_id: form.client_id || null,
           is_other_work: true,
           videos_edited_count: 0,
           videos_reedited_count: 0,
@@ -201,8 +202,8 @@ export default function DailyLog() {
             </div>
             {form.is_other_work && (
               <p className="text-xs text-ink-500">
-                For days without client production — internal tasks, training, admin, etc. No client needed, but
-                this still counts toward your streak as long as you say what you worked on below.
+                For days without client production — internal tasks, training, admin, etc. Picking a client is
+                optional, and it still counts toward your streak as long as you say what you worked on below.
               </p>
             )}
           </CardContent>
@@ -212,7 +213,7 @@ export default function DailyLog() {
           <CardHeader className="pb-0">
             <h2 className="text-sm font-semibold text-ink-800">Details</h2>
           </CardHeader>
-          <CardContent className={cn('grid grid-cols-1 gap-4 mt-4', !form.is_other_work && 'sm:grid-cols-2')}>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <Field label="Date" htmlFor="production_date" required>
               <Input
                 id="production_date"
@@ -225,23 +226,25 @@ export default function DailyLog() {
             <Field label="Day">
               <Input value={dayOfWeek(form.production_date)} disabled />
             </Field>
-            {!form.is_other_work && (
-              <Field label="Client" htmlFor="client_id" required>
-                <Select
-                  id="client_id"
-                  required
-                  value={form.client_id}
-                  onChange={(e) => updateField('client_id', e.target.value)}
-                >
-                  <option value="">Select a client…</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            )}
+            <Field
+              label={form.is_other_work ? 'Client (optional)' : 'Client'}
+              htmlFor="client_id"
+              required={!form.is_other_work}
+            >
+              <Select
+                id="client_id"
+                required={!form.is_other_work}
+                value={form.client_id}
+                onChange={(e) => updateField('client_id', e.target.value)}
+              >
+                <option value="">{form.is_other_work ? 'No client' : 'Select a client…'}</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
           </CardContent>
         </Card>
 

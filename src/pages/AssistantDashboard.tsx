@@ -7,7 +7,7 @@ import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/
 import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap'
 import { StreakCard } from '../components/dashboard/StreakCard'
 import { Button, Card, EmptyState, PageSpinner, Badge } from '../components/ui/primitives'
-import { PRODUCTION_FIELDS, totalItems, logActivityCount, type ProductionLogWithRelations } from '../types/database'
+import { PRODUCTION_FIELDS, totalItems, logActivityCount, logClientLabel, type ProductionLogWithRelations } from '../types/database'
 import { formatDate, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
 
 function rangeToDates(range: RangeKey): { from: string; to: string } {
@@ -152,7 +152,7 @@ export default function AssistantDashboard() {
                   <div key={log.id} className="flex items-center justify-between px-5 py-3.5">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-ink-900 flex items-center gap-1.5">
-                        {(log as any).is_other_work ? 'Other Work' : log.client?.name ?? 'Unknown client'}
+                        {logClientLabel(log as any, 'Unknown client')}
                         {log.notes && (
                           <StickyNote className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-label="Has notes">
                             <title>{log.notes}</title>

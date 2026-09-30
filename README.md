@@ -66,7 +66,7 @@ for days that weren't client production — internal tasks, training, admin,
 helping a teammate, etc. — where picking a client and typing production
 counts wouldn't make sense:
 
-- No client is required (`client_id` is left null)
+- Client is optional — pick one from the dropdown if the work relates to a client, or leave it blank
 - Production counts/statuses are hidden and saved as zero
 - The Notes box becomes required — a short description of what was worked on
 - It still counts as an active day for the streak and contribution heatmap,
@@ -78,6 +78,13 @@ adds an `is_other_work` flag with a check constraint enforcing that a row is
 either normal client production or a flagged, client-less Other Work entry —
 never neither, never both). History and Reports both got an "Other Work"
 filter option and label to match.
+
+Run `supabase/migrations/009_other_work_optional_client.sql` after 008 to
+allow an optional client on Other Work entries (client work still requires
+one). It also excludes Other Work from the public view-only client report, so
+tagged internal work never shows up to clients. History/Reports/dashboards
+show these as "Other Work · Client name", and picking that client in a filter
+includes them.
 
 ## Client view-only report links
 

@@ -6,7 +6,7 @@ import { usePresence } from '../contexts/PresenceContext'
 import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/KpiCards'
 import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap'
 import { Button, Card, EmptyState, PageSpinner } from '../components/ui/primitives'
-import { PRODUCTION_FIELDS, totalItems, logActivityCount, type Profile, type ProductionLogWithRelations } from '../types/database'
+import { PRODUCTION_FIELDS, totalItems, logActivityCount, logClientLabel, type Profile, type ProductionLogWithRelations } from '../types/database'
 import { formatDate, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
 
 function rangeToDates(range: RangeKey): { from: string; to: string } {
@@ -232,7 +232,7 @@ export default function AdminDashboard() {
                           <p className="text-xs text-ink-500">
                             <span className="font-medium text-ink-700">{log.profile?.full_name ?? 'Unknown'}</span>
                             {' · '}
-                            {(log as any).is_other_work ? 'Other Work' : log.client?.name ?? '—'}
+                            {logClientLabel(log as any)}
                             {' · '}
                             {formatDate(log.production_date)}
                           </p>

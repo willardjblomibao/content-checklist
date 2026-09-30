@@ -8,7 +8,7 @@ import { useToast } from '../contexts/ToastContext'
 import { useProductionLogs, deleteProductionLog, type LogFilters } from '../hooks/useProductionLogs'
 import { Badge, Button, Card, EmptyState, Field, PageSpinner, Select, Input } from '../components/ui/primitives'
 import { ConfirmDialog } from '../components/ui/dialog'
-import { PRODUCTION_FIELDS, totalItems, type Client, type Profile } from '../types/database'
+import { PRODUCTION_FIELDS, totalItems, logClientLabel, type Client, type Profile } from '../types/database'
 import { dayOfWeek, formatDate } from '../lib/utils'
 
 const PAGE_SIZE = 20
@@ -66,7 +66,7 @@ export default function History() {
       Date: log.production_date,
       Day: dayOfWeek(log.production_date),
       Assistant: log.profile?.full_name ?? '',
-      Client: (log as any).is_other_work ? 'Other Work' : log.client?.name ?? '',
+      Client: logClientLabel(log as any, ''),
       ...Object.fromEntries(
         PRODUCTION_FIELDS.map((f) => [f.label, (log as any)[f.countKey]])
       ),
@@ -169,7 +169,14 @@ export default function History() {
                           <td className="px-3 py-3 whitespace-nowrap text-ink-700">{log.profile?.full_name ?? '—'}</td>
                         )}
                         <td className="px-3 py-3 whitespace-nowrap text-ink-700">
-                          {(log as any).is_other_work ? <Badge variant="neutral">Other Work</Badge> : log.client?.name ?? '—'}
+                          {(log as any).is_other_work ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <Badge variant="neutral">Other Work</Badge>
+                              {log.client?.name && <span>{log.client.name}</span>}
+                            </span>
+                          ) : (
+                            log.client?.name ?? '—'
+                          )}
                         </td>
                         <td className="px-3 py-3 text-right font-semibold text-ink-900">{totalItems(log)}</td>
                         <td className="px-3 py-3">

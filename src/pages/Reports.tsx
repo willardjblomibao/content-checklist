@@ -19,7 +19,7 @@ import {
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import { Button, Card, Field, Input, PageSpinner, Select } from '../components/ui/primitives'
-import { PRODUCTION_FIELDS, totalItems, type Client, type Profile, type ProductionLogWithRelations } from '../types/database'
+import { PRODUCTION_FIELDS, totalItems, logClientLabel, type Client, type Profile, type ProductionLogWithRelations } from '../types/database'
 import { startOfMonthISO, todayISO } from '../lib/utils'
 
 const COLORS = ['#177566', '#D2920F', '#3DA491', '#B5790A', '#7BC2B4', '#0F4F44']
@@ -154,7 +154,7 @@ export default function Reports() {
     const rows = filteredLogs.map((l) => ({
       Date: l.production_date,
       Assistant: l.profile?.full_name ?? '',
-      Client: (l as any).is_other_work ? 'Other Work' : l.client?.name ?? '',
+      Client: logClientLabel(l as any, ''),
       ...Object.fromEntries(PRODUCTION_FIELDS.map((f) => [f.label, (l as any)[f.countKey]])),
       'Total Items': totalItems(l),
       Notes: l.notes ?? '',
