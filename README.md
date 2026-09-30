@@ -86,6 +86,17 @@ tagged internal work never shows up to clients. History/Reports/dashboards
 show these as "Other Work · Client name", and picking that client in a filter
 includes them.
 
+Run `supabase/migrations/010_other_work_client_name_and_items.sql` after 009.
+Other Work entries can now also carry item counts (optional — they show up in
+totals, dashboards and History), and the client dropdown has an "Other — not in
+list" option that lets the assistant type a client's name (`other_client_name`).
+Only Other Work rows that have items appear in a client's public report.
+
+**Move notes to Other Work:** on a Client Work entry, once Notes has text, a
+"Move to Other Work" button creates a separate Other Work entry for the same
+date (tagged to the same client, no items) using that text, and clears the note
+on the client entry.
+
 **Dashboards:** Other Work has its own amber-styled section, separate from the
 green production widgets. Assistants see *Your Other Work* (their entries in the
 selected range, with client tag and what they worked on). Admins see *Team Other

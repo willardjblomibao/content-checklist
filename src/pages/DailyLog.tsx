@@ -9,7 +9,8 @@ import { dayOfWeek, todayISO, cn } from '../lib/utils'
 
 type FormState = {
   production_date: string
-  client_id: string
+  client_id: string // '' = none, OTHER_CLIENT = typed name, otherwise a client uuid
+  other_client_name: string
   is_other_work: boolean
   videos_edited_count: number
   videos_edited_status: ProductionStatus
@@ -26,9 +27,13 @@ type FormState = {
   notes: string
 }
 
+// Sentinel option in the Other Work client dropdown: client isn't in the list, type their name instead.
+const OTHER_CLIENT = '__other__'
+
 const emptyForm: FormState = {
   production_date: todayISO(),
   client_id: '',
+  other_client_name: '',
   is_other_work: false,
   videos_edited_count: 0,
   videos_edited_status: 'completed',
@@ -57,6 +62,7 @@ export default function DailyLog() {
   const [loading, setLoading] = useState(!!editId)
   const [saving, setSaving] = useState(false)
   const [ownerId, setOwnerId] = useState<string | null>(null)
+  const [moving, setMoving] = useState(false)
 
   useEffect(() => {
     supabase
@@ -79,7 +85,8 @@ export default function DailyLog() {
         if (data) {
           setForm({
             production_date: data.production_date,
-            client_id: data.client_id ?? '',
+            client_id: data.client_id ?? (data.other_client_name ? OTHER_CLIENT : ''),
+            other_client_name: data.other_client_name ?? '',
             is_other_work: data.is_other_work ?? false,
             videos_edited_count: data.videos_edited_count,
             videos_edited_status: data.videos_edited_status,
@@ -119,36 +126,33 @@ export default function DailyLog() {
         toast('Say what you worked on — it\'s required for an Other Work entry.', 'error')
         return
       }
-      // client_id is optional here — blank means "not tied to a client".
-    } else {
-      if (!form.client_id) {
-        toast('Please select a client.', 'error')
+      if (form.client_id === OTHER_CLIENT && !form.other_client_name.trim()) {
+        toast('Type the client\'s name, or choose "No client".', 'error')
         return
       }
-      for (const f of PRODUCTION_FIELDS) {
-        if (form[f.countKey] < 0 || !Number.isInteger(form[f.countKey])) {
-          toast('Counts must be whole numbers, zero or greater.', 'error')
-          return
-        }
+    } else if (!form.client_id) {
+      toast('Please select a client.', 'error')
+      return
+    }
+    for (const f of PRODUCTION_FIELDS) {
+      if (form[f.countKey] < 0 || !Number.isInteger(form[f.countKey])) {
+        toast('Counts must be whole numbers, zero or greater.', 'error')
+        return
       }
     }
 
     setSaving(true)
-    const payload = form.is_other_work
-      ? {
-          production_date: form.production_date,
-          client_id: form.client_id || null,
-          is_other_work: true,
-          videos_edited_count: 0,
-          videos_reedited_count: 0,
-          carousels_edited_count: 0,
-          carousels_reedited_count: 0,
-          text_posts_prepared_count: 0,
-          text_posts_reedited_count: 0,
-          notes: form.notes.trim(),
-          user_id: ownerId ?? profile.id,
-        }
-      : { ...form, is_other_work: false, notes: form.notes.trim() || null, user_id: ownerId ?? profile.id }
+    const { client_id, other_client_name, ...rest } = form
+    // Other Work: client is optional — a listed client, a typed name, or neither.
+    // Client Work: always a listed client.
+    const payload = {
+      ...rest,
+      client_id: client_id && client_id !== OTHER_CLIENT ? client_id : null,
+      other_client_name:
+        form.is_other_work && client_id === OTHER_CLIENT ? other_client_name.trim() : null,
+      notes: form.notes.trim() || null,
+      user_id: ownerId ?? profile.id,
+    }
 
     const { error } = editId
       ? await supabase.from('production_logs').update(payload).eq('id', editId)
@@ -163,6 +167,46 @@ export default function DailyLog() {
 
     toast(editId ? 'Daily log updated.' : 'Daily log saved.', 'success')
     navigate(isAdmin ? '/history' : '/')
+  }
+
+  /**
+   * Turn what's typed in this client entry's Notes into its own Other Work
+   * entry (same date, tagged to the same client, no items), then clear the
+   * notes here. The new entry is created first so the text is never lost if
+   * something fails.
+   */
+  async function moveNotesToOtherWork() {
+    if (!profile) return
+    const text = form.notes.trim()
+    if (!text) {
+      toast('Write something in Notes first.', 'error')
+      return
+    }
+    setMoving(true)
+    const { error: insertError } = await supabase.from('production_logs').insert({
+      user_id: ownerId ?? profile.id,
+      production_date: form.production_date,
+      client_id: form.client_id || null,
+      is_other_work: true,
+      notes: text,
+    })
+    if (insertError) {
+      setMoving(false)
+      toast(`Couldn't move it: ${insertError.message}`, 'error')
+      return
+    }
+    if (editId) {
+      const { error: clearError } = await supabase.from('production_logs').update({ notes: null }).eq('id', editId)
+      if (clearError) {
+        setMoving(false)
+        updateField('notes', '')
+        toast('Added to Other Work, but couldn\'t clear the note here — save this log to finish.', 'error')
+        return
+      }
+    }
+    setMoving(false)
+    updateField('notes', '')
+    toast('Moved to Other Work.', 'success')
   }
 
   if (loading) return <PageSpinner />
@@ -181,7 +225,9 @@ export default function DailyLog() {
             <div className="inline-flex rounded-md border border-ink-200 p-1 bg-ink-50 self-start">
               <button
                 type="button"
-                onClick={() => updateField('is_other_work', false)}
+                onClick={() =>
+                  setForm((f) => ({ ...f, is_other_work: false, client_id: f.client_id === OTHER_CLIENT ? '' : f.client_id }))
+                }
                 className={cn(
                   'px-3.5 py-1.5 text-sm font-medium rounded-[5px] transition-colors',
                   !form.is_other_work ? 'bg-white text-ink-900 shadow-card' : 'text-ink-500 hover:text-ink-700'
@@ -203,7 +249,8 @@ export default function DailyLog() {
             {form.is_other_work && (
               <p className="text-xs text-ink-500">
                 For days without client production — internal tasks, training, admin, etc. Picking a client is
-                optional, and it still counts toward your streak as long as you say what you worked on below.
+                optional (you can type a name if they're not in the list), item counts are optional too, and it still
+                counts toward your streak as long as you say what you worked on below.
               </p>
             )}
           </CardContent>
@@ -243,16 +290,30 @@ export default function DailyLog() {
                     {c.name}
                   </option>
                 ))}
+                {form.is_other_work && <option value={OTHER_CLIENT}>Other — not in list (type name)…</option>}
               </Select>
             </Field>
+            {form.is_other_work && form.client_id === OTHER_CLIENT && (
+              <Field label="Client name" htmlFor="other_client_name" required>
+                <Input
+                  id="other_client_name"
+                  required
+                  maxLength={120}
+                  placeholder="Who asked for this?"
+                  value={form.other_client_name}
+                  onChange={(e) => updateField('other_client_name', e.target.value)}
+                />
+              </Field>
+            )}
           </CardContent>
         </Card>
 
-        {!form.is_other_work && (
-          <>
+        <>
             <Card>
               <CardHeader className="pb-0 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-ink-800">Production</h2>
+                <h2 className="text-sm font-semibold text-ink-800">
+                  Production{form.is_other_work && <span className="font-normal text-ink-500"> (optional)</span>}
+                </h2>
               </CardHeader>
               <CardContent className="mt-4 flex flex-col divide-y divide-ink-100">
                 {PRODUCTION_FIELDS.map((f) => {
@@ -297,8 +358,7 @@ export default function DailyLog() {
               <span className="text-sm font-medium text-ink-600">Total Items</span>
               <span className="text-2xl font-semibold text-ink-900">{runningTotal}</span>
             </div>
-          </>
-        )}
+        </>
 
         <Card>
           <CardHeader className="pb-0">
@@ -321,6 +381,17 @@ export default function DailyLog() {
               value={form.notes}
               onChange={(e) => updateField('notes', e.target.value)}
             />
+            {!form.is_other_work && form.notes.trim() && (
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <p className="text-xs text-ink-500">
+                  Was this actually non-production work? Move it to its own Other Work entry for this date
+                  {form.client_id ? ' (kept under the same client)' : ''}.
+                </p>
+                <Button type="button" variant="secondary" size="sm" loading={moving} onClick={moveNotesToOtherWork}>
+                  Move to Other Work
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

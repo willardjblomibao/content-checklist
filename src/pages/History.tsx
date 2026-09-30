@@ -8,7 +8,7 @@ import { useToast } from '../contexts/ToastContext'
 import { useProductionLogs, deleteProductionLog, type LogFilters } from '../hooks/useProductionLogs'
 import { Badge, Button, Card, EmptyState, Field, PageSpinner, Select, Input } from '../components/ui/primitives'
 import { ConfirmDialog } from '../components/ui/dialog'
-import { PRODUCTION_FIELDS, totalItems, logClientLabel, type Client, type Profile } from '../types/database'
+import { PRODUCTION_FIELDS, totalItems, logClientLabel, logClientName, type Client, type Profile } from '../types/database'
 import { dayOfWeek, formatDate } from '../lib/utils'
 
 const PAGE_SIZE = 20
@@ -172,7 +172,7 @@ export default function History() {
                           {(log as any).is_other_work ? (
                             <span className="inline-flex items-center gap-1.5">
                               <Badge variant="neutral">Other Work</Badge>
-                              {log.client?.name && <span>{log.client.name}</span>}
+                              {logClientName(log as any) && <span>{logClientName(log as any)}</span>}
                             </span>
                           ) : (
                             log.client?.name ?? '—'
@@ -180,10 +180,8 @@ export default function History() {
                         </td>
                         <td className="px-3 py-3 text-right font-semibold text-ink-900">{totalItems(log)}</td>
                         <td className="px-3 py-3">
-                          {(log as any).is_other_work ? (
-                            <span className="text-ink-300">—</span>
-                          ) : loggedFields.length === 0 ? (
-                            <Badge variant="neutral">No items</Badge>
+                          {loggedFields.length === 0 ? (
+                            (log as any).is_other_work ? <span className="text-ink-300">—</span> : <Badge variant="neutral">No items</Badge>
                           ) : (
                             <Badge variant={anyInProgress ? 'in_progress' : 'completed'} />
                           )}

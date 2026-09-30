@@ -41,6 +41,8 @@ export interface ProductionLog {
   text_posts_reedited_count: number
   text_posts_reedited_status: ProductionStatus
   notes: string | null
+  /** Other Work only: free-typed client name when the client isn't in the clients list (client_id stays null). */
+  other_client_name: string | null
   /** A day logged as non-client work (internal tasks, training, admin, etc.) — still counts toward the streak. */
   is_other_work: boolean
   created_at: string
@@ -93,12 +95,17 @@ export function logActivityCount(log: Pick<ProductionLog,
  * Display label for a log's client column. Other-work entries read
  * "Other Work" or "Other Work · Client" when the assistant tagged one.
  */
+export function logClientName(log: { client?: { name: string } | null; other_client_name?: string | null }): string | null {
+  return log.client?.name ?? log.other_client_name ?? null
+}
+
 export function logClientLabel(
-  log: { is_other_work?: boolean; client?: { name: string } | null },
+  log: { is_other_work?: boolean; client?: { name: string } | null; other_client_name?: string | null },
   fallback = '—'
 ): string {
-  if (log.is_other_work) return log.client?.name ? `Other Work · ${log.client.name}` : 'Other Work'
-  return log.client?.name ?? fallback
+  const name = logClientName(log)
+  if (log.is_other_work) return name ? `Other Work · ${name}` : 'Other Work'
+  return name ?? fallback
 }
 
 // =====================================================================

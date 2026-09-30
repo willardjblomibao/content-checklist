@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Briefcase } from 'lucide-react'
 import { Card } from '../ui/primitives'
 import { formatDate } from '../../lib/utils'
-import type { ProductionLogWithRelations } from '../../types/database'
+import { logClientName, totalItems, type ProductionLogWithRelations } from '../../types/database'
 
 const MAX_ROWS = 5
 
@@ -24,6 +24,7 @@ export function OtherWorkPanel({
     .filter((l) => l.is_other_work)
     .sort((a, b) => b.production_date.localeCompare(a.production_date))
   const days = new Set(entries.map((e) => e.production_date)).size
+  const items = entries.reduce((sum, e) => sum + totalItems(e), 0)
 
   const perPerson = new Map<string, number>()
   if (mode === 'team') {
@@ -46,6 +47,8 @@ export function OtherWorkPanel({
             <span className="font-normal text-ink-500">
               {' · '}
               {days} {days === 1 ? 'day' : 'days'}
+              {' · '}
+              {items} {items === 1 ? 'item' : 'items'}
               {mode === 'team' && ` · ${tally.length} ${tally.length === 1 ? 'assistant' : 'assistants'}`}
             </span>
           </p>
@@ -85,9 +88,14 @@ export function OtherWorkPanel({
                 {mode === 'team' && <span className="font-medium text-ink-700">{e.profile?.full_name ?? 'Unknown'}</span>}
                 {mode === 'team' && <span>·</span>}
                 <span>{formatDate(e.production_date)}</span>
-                {e.client?.name && (
+                {logClientName(e) && (
                   <span className="rounded-full bg-white border border-amber-100 px-2 py-px text-amber-600 font-medium">
-                    {e.client.name}
+                    {logClientName(e)}
+                  </span>
+                )}
+                {totalItems(e) > 0 && (
+                  <span className="font-medium text-ink-700">
+                    {totalItems(e)} {totalItems(e) === 1 ? 'item' : 'items'}
                   </span>
                 )}
               </p>

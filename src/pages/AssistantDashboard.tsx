@@ -182,7 +182,7 @@ export default function AssistantDashboard() {
                       )}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      {!isOther && <span className="text-sm font-semibold text-ink-800">{total} items</span>}
+                      <span className="text-sm font-semibold text-ink-800">{total} items</span>
                       {isOther ? (
                         <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-600">
                           Other Work
