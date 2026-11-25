@@ -1,7 +1,7 @@
 // Bump this whenever you add a new batch of items below — that's what
 // makes the popup show up again for everyone, exactly once, until they
 // dismiss it. Old version strings are harmless to leave in git history.
-export const WHATS_NEW_VERSION = '2026-11-partnerlee-2.0'
+export const WHATS_NEW_VERSION = '2026-11-partnerlee-2.0-video-formats'
 
 export interface WhatsNewItem {
   title: string
@@ -9,6 +9,11 @@ export interface WhatsNewItem {
 }
 
 export const WHATS_NEW_ITEMS: WhatsNewItem[] = [
+  {
+    title: '🎬 Short-form vs long-form videos',
+    description:
+      'When you log videos, count short-form and long-form separately. Dashboards, Production Reports and CSV exports now show the split. Older logs show their videos as "not specified" until edited.',
+  },
   {
     title: '✨ Partnerlee 2.0: a fresh new look',
     description:

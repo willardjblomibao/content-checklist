@@ -9,7 +9,7 @@ import { StreakCard } from '../components/dashboard/StreakCard'
 import { OtherWorkPanel } from '../components/dashboard/OtherWorkPanel'
 import { TodayHero, chipsFor } from '../components/dashboard/TodayHero'
 import { Button, Card, EmptyState, PageSpinner, Badge, PageHeader, SectionTitle } from '../components/ui/primitives'
-import { PRODUCTION_FIELDS, logActivityCount, logClientLabel, type ProductionLogWithRelations } from '../types/database'
+import { PRODUCTION_FIELDS, logActivityCount, videoFormatTotals, editedSplit, logClientLabel, type ProductionLogWithRelations } from '../types/database'
 import { computeStreak, formatDate, greeting, previousPeriod, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
 
 function rangeToDates(range: RangeKey): { from: string; to: string } {
@@ -137,7 +137,7 @@ export default function AssistantDashboard() {
       <TodayHero
         headline={nothingYet ? 'Ready when you are' : `${todayCount} item${todayCount === 1 ? '' : 's'} logged`}
         detail={detail}
-        chips={chipsFor(todayTotals)}
+        chips={chipsFor(todayTotals, videoFormatTotals(todayLogs))}
         streak={streak}
         ctaLabel={nothingYet ? "Log today's work" : 'Add another log'}
         ctaIsPrimaryAction={nothingYet}
@@ -147,7 +147,7 @@ export default function AssistantDashboard() {
         <SectionTitle aside={<RangeSwitcher value={range} onChange={setRange} />} className="flex-wrap">
           Your production
         </SectionTitle>
-        {loading ? <PageSpinner /> : <KpiCards totals={totals} previous={prevTotals} range={range} />}
+        {loading ? <PageSpinner /> : <KpiCards totals={totals} previous={prevTotals} range={range} videoSplit={editedSplit(logs)} />}
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">

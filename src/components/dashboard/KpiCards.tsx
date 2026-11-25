@@ -37,10 +37,13 @@ export function KpiCards({
   totals,
   previous,
   range,
+  videoSplit,
 }: {
   totals: Record<string, number>
   previous?: Record<string, number>
   range: RangeKey
+  /** Short/long-form split of the "Videos edited" tile. */
+  videoSplit?: { short: number; long: number }
 }) {
   const allKeys = Object.keys(totals)
   const tiles = [
@@ -82,6 +85,11 @@ export function KpiCards({
             deltaGood={good}
             icon={<Icon className="h-3.5 w-3.5" />}
             highlight={tile.highlight}
+            sub={
+              tile.label === 'Videos edited' && videoSplit && videoSplit.short + videoSplit.long > 0
+                ? `${videoSplit.short} short · ${videoSplit.long} long`
+                : undefined
+            }
             className={i === 0 ? 'col-span-2 lg:col-span-1' : ''}
           />
         )

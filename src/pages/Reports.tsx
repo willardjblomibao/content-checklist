@@ -4,6 +4,7 @@ import { Download, Upload } from 'lucide-react'
 import { ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import {
   SERIES,
+  MUTED,
   INK,
   compact,
   xAxisProps,
@@ -24,7 +25,7 @@ import { RankBarChart } from '../components/charts/GrowthCharts'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import { Button, Card, Field, Input, PageSpinner, Select } from '../components/ui/primitives'
-import { PRODUCTION_FIELDS, totalItems, logClientLabel, type Client, type Profile, type ProductionLogWithRelations } from '../types/database'
+import { PRODUCTION_FIELDS, totalItems, videoFormatCsvValues, VIDEO_FORMAT_CSV_COLUMNS, videoFormatTotals, logClientLabel, type Client, type Profile, type ProductionLogWithRelations } from '../types/database'
 import { formatDate, startOfMonthISO, todayISO } from '../lib/utils'
 
 type StatusFilter = '' | 'completed' | 'in_progress'
@@ -126,6 +127,15 @@ export default function Reports() {
   }, [filteredLogs])
   const contentTotal = byContentType.reduce((s, d) => s + d.value, 0)
 
+  const videoFormats = useMemo(() => videoFormatTotals(filteredLogs), [filteredLogs])
+  const formatParts = [
+    { label: 'Short-form', value: videoFormats.short, color: SERIES[0], ink: '#fff' },
+    { label: 'Long-form', value: videoFormats.long, color: SERIES[1], ink: '#1C1E1C' },
+    ...(videoFormats.unspecified > 0
+      ? [{ label: 'Not specified', value: videoFormats.unspecified, color: MUTED, ink: '#1C1E1C' }]
+      : []),
+  ].map((p) => ({ ...p, share: videoFormats.total ? Math.round((p.value / videoFormats.total) * 100) : 0 }))
+
   const overTime = useMemo(() => {
     const map = new Map<string, number>()
     for (const l of filteredLogs) {
@@ -163,6 +173,7 @@ export default function Reports() {
       Assistant: l.profile?.full_name ?? '',
       Client: logClientLabel(l as any, ''),
       ...Object.fromEntries(PRODUCTION_FIELDS.map((f) => [f.label, (l as any)[f.countKey]])),
+      ...videoFormatCsvValues(l),
       'Total Items': totalItems(l),
       Notes: l.notes ?? '',
     }))
@@ -225,13 +236,29 @@ export default function Reports() {
           const parseCount = (v?: string) => Math.max(0, parseInt(v || '0', 10) || 0)
           const parseStatus = (v?: string) => (v?.trim() === 'X' ? 'completed' : v?.trim() === '/' ? 'in_progress' : 'completed')
 
+          // Optional short/long-form columns (only sent when the file has them,
+          // so imports keep working on a database without migration 011).
+          const formatCols: Record<string, number> = {}
+          for (const c of VIDEO_FORMAT_CSV_COLUMNS) {
+            if (row[c.header] !== undefined && row[c.header] !== '') formatCols[c.key] = parseCount(row[c.header])
+          }
+          const videosEdited = Math.max(
+            parseCount(row['Videos Edited']),
+            (formatCols.videos_edited_short_count ?? 0) + (formatCols.videos_edited_long_count ?? 0)
+          )
+          const videosReedited = Math.max(
+            parseCount(row['Videos Re-edited']),
+            (formatCols.videos_reedited_short_count ?? 0) + (formatCols.videos_reedited_long_count ?? 0)
+          )
+
           await supabase.from('production_logs').insert({
+            ...formatCols,
             user_id: assistant.id,
             client_id: clientId,
             production_date: dateRaw,
-            videos_edited_count: parseCount(row['Videos Edited']),
+            videos_edited_count: videosEdited,
             videos_edited_status: parseStatus(row['Videos Edited Checked']),
-            videos_reedited_count: parseCount(row['Videos Re-edited']),
+            videos_reedited_count: videosReedited,
             videos_reedited_status: parseStatus(row['Videos Re-edited Checked']),
             carousels_edited_count: parseCount(row['Carousels Edited']),
             carousels_edited_status: parseStatus(row['Carousels Edited Checked']),
@@ -493,6 +520,52 @@ export default function Reports() {
                 ))}
               </div>
             </div>
+          </ChartCard>
+
+          <ChartCard
+            title="Video format"
+            subtitle="Short-form vs long-form, edited and re-edited videos"
+            className="lg:col-span-2"
+            height={videoFormats.total === 0 ? 24 : videoFormats.unspecified > 0 ? 92 : 68}
+          >
+            {videoFormats.total === 0 ? (
+              <p className="text-sm text-ink-500">No videos in the selected range.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div
+                  className="flex h-7 w-full gap-[2px]"
+                  role="img"
+                  aria-label={formatParts.map((p) => `${p.label}: ${p.value} (${p.share}%)`).join(', ')}
+                >
+                  {formatParts
+                    .filter((p) => p.value > 0)
+                    .map((p) => (
+                      <div
+                        key={p.label}
+                        title={`${p.label}: ${p.value.toLocaleString()} (${p.share}%)`}
+                        className="h-full rounded flex items-center px-2 text-xs font-semibold overflow-hidden transition-all"
+                        style={{ width: `${(p.value / videoFormats.total) * 100}%`, background: p.color, color: p.ink }}
+                      >
+                        {p.share >= 9 && <span className="whitespace-nowrap">{p.share}%</span>}
+                      </div>
+                    ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
+                  {formatParts.map((p) => (
+                    <span key={p.label} className="inline-flex items-center gap-2 text-[13px]">
+                      <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: p.color }} />
+                      <span className="text-ink-600">{p.label}</span>
+                      <span className="font-semibold text-ink-900 tabular-nums">{p.value.toLocaleString()}</span>
+                    </span>
+                  ))}
+                </div>
+                {videoFormats.unspecified > 0 && (
+                  <p className="text-xs text-ink-500">
+                    "Not specified" are videos logged before short/long-form tracking, or not split by format.
+                  </p>
+                )}
+              </div>
+            )}
           </ChartCard>
 
           <ChartCard

@@ -32,6 +32,11 @@ export interface ProductionLog {
   videos_edited_status: ProductionStatus
   videos_reedited_count: number
   videos_reedited_status: ProductionStatus
+  /** Short-form / long-form split of the video counts (migration 011). Totals stay in videos_*_count; short + long <= total, the rest is "not specified". */
+  videos_edited_short_count?: number
+  videos_edited_long_count?: number
+  videos_reedited_short_count?: number
+  videos_reedited_long_count?: number
   carousels_edited_count: number
   carousels_edited_status: ProductionStatus
   carousels_reedited_count: number
@@ -63,6 +68,55 @@ export const PRODUCTION_FIELDS = [
   { countKey: 'text_posts_prepared_count', statusKey: 'text_posts_prepared_status', label: 'Text Posts Prepared' },
   { countKey: 'text_posts_reedited_count', statusKey: 'text_posts_reedited_status', label: 'Text Posts Re-edited' },
 ] as const
+
+export type VideoFormatTotals = { short: number; long: number; unspecified: number; total: number }
+
+/**
+ * Short-form / long-form / not-specified video counts across logs, covering
+ * both edited and re-edited videos. Old logs (before migration 011) and any
+ * count not split by format land in "unspecified".
+ */
+export function videoFormatTotals(
+  logs: Pick<
+    ProductionLog,
+    | 'videos_edited_count'
+    | 'videos_reedited_count'
+    | 'videos_edited_short_count'
+    | 'videos_edited_long_count'
+    | 'videos_reedited_short_count'
+    | 'videos_reedited_long_count'
+  >[]
+): VideoFormatTotals {
+  let short = 0
+  let long = 0
+  let total = 0
+  for (const l of logs) {
+    short += (l.videos_edited_short_count ?? 0) + (l.videos_reedited_short_count ?? 0)
+    long += (l.videos_edited_long_count ?? 0) + (l.videos_reedited_long_count ?? 0)
+    total += (l.videos_edited_count ?? 0) + (l.videos_reedited_count ?? 0)
+  }
+  return { short, long, unspecified: Math.max(0, total - short - long), total }
+}
+
+/** Short/long split of edited (not re-edited) videos. */
+export function editedSplit(logs: Pick<ProductionLog, 'videos_edited_short_count' | 'videos_edited_long_count'>[]) {
+  return logs.reduce(
+    (acc, l) => ({ short: acc.short + (l.videos_edited_short_count ?? 0), long: acc.long + (l.videos_edited_long_count ?? 0) }),
+    { short: 0, long: 0 }
+  )
+}
+
+/** CSV columns for the short/long split, in export order. */
+export const VIDEO_FORMAT_CSV_COLUMNS = [
+  { header: 'Short-form Videos Edited', key: 'videos_edited_short_count' },
+  { header: 'Long-form Videos Edited', key: 'videos_edited_long_count' },
+  { header: 'Short-form Videos Re-edited', key: 'videos_reedited_short_count' },
+  { header: 'Long-form Videos Re-edited', key: 'videos_reedited_long_count' },
+] as const
+
+export function videoFormatCsvValues(log: Partial<ProductionLog>): Record<string, number> {
+  return Object.fromEntries(VIDEO_FORMAT_CSV_COLUMNS.map((c) => [c.header, (log[c.key] as number | undefined) ?? 0]))
+}
 
 export function totalItems(log: Pick<ProductionLog,
   'videos_edited_count' | 'videos_reedited_count' | 'carousels_edited_count' |
