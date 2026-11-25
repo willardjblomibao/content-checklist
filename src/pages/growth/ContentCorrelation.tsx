@@ -1,16 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Zap, Video, TrendingUp, Users, Clock, Trophy } from 'lucide-react'
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  Bar,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from 'recharts'
+import { ContentImpactCharts } from '../../components/charts/GrowthCharts'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { Card, EmptyState, PageSpinner, Select } from '../../components/ui/primitives'
@@ -235,23 +225,7 @@ export default function ContentCorrelation() {
             </p>
           </Card>
 
-          <Card className="p-5">
-            <h2 className="text-[15px] font-semibold text-ink-900 mb-4">Content Output vs. Views, Week by Week</h2>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ left: -10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF0EE" />
-                  <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                  <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar yAxisId="left" dataKey="Content Items" fill="#D97757" radius={[4, 4, 0, 0]} barSize={18} />
-                  <Line yAxisId="right" type="monotone" dataKey="Views" stroke="#2F6B4F" strokeWidth={2.5} dot={{ r: 3 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+          <ContentImpactCharts data={chartData} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <Card className="p-5">

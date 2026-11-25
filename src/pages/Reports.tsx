@@ -1,28 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
 import Papa from 'papaparse'
 import { Download, Upload } from 'lucide-react'
+import { ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import {
-  BarChart,
-  Bar,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts'
+  SERIES,
+  INK,
+  compact,
+  xAxisProps,
+  yAxisProps,
+  gridProps,
+  chartMargin,
+  lineCursor,
+  lineProps,
+  activeDot,
+  AreaGradient,
+  GlowFilter,
+  ChartTooltip,
+  ChartCard,
+  niceY,
+  maxOf,
+} from '../components/charts/chartKit'
+import { RankBarChart } from '../components/charts/GrowthCharts'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import { Button, Card, Field, Input, PageSpinner, Select } from '../components/ui/primitives'
 import { PRODUCTION_FIELDS, totalItems, logClientLabel, type Client, type Profile, type ProductionLogWithRelations } from '../types/database'
-import { startOfMonthISO, todayISO } from '../lib/utils'
-
-const COLORS = ['#177566', '#D2920F', '#3DA491', '#B5790A', '#7BC2B4', '#0F4F44']
+import { formatDate, startOfMonthISO, todayISO } from '../lib/utils'
 
 type StatusFilter = '' | 'completed' | 'in_progress'
 
@@ -113,11 +116,15 @@ export default function Reports() {
   }, [filteredLogs])
 
   const byContentType = useMemo(() => {
-    return PRODUCTION_FIELDS.map((f) => ({
+    // Colour is fixed per content type (by its position in PRODUCTION_FIELDS),
+    // so hiding an empty type never repaints the others.
+    return PRODUCTION_FIELDS.map((f, i) => ({
       name: f.label,
+      color: SERIES[i],
       value: filteredLogs.reduce((sum, l) => sum + ((l as any)[f.countKey] ?? 0), 0),
     })).filter((d) => d.value > 0)
   }, [filteredLogs])
+  const contentTotal = byContentType.reduce((s, d) => s + d.value, 0)
 
   const overTime = useMemo(() => {
     const map = new Map<string, number>()
@@ -367,114 +374,152 @@ export default function Reports() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <ChartCard title="Production by Assistant">
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={byAssistant}>
-                <defs>
-                  <linearGradient id="barGreen" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3DA491" />
-                    <stop offset="100%" stopColor="#0F4F44" />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ fill: '#EFF8F6' }} />
-                <Bar dataKey="total" fill="url(#barGreen)" radius={[8, 8, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
+          <RankBarChart
+            title="Production by assistant"
+            subtitle="Total items in the selected range"
+            valueName="Items"
+            data={byAssistant.map((d) => ({ name: d.name, value: d.total }))}
+          />
+
+          <RankBarChart
+            title="Production by client"
+            subtitle="Total items in the selected range"
+            valueName="Items"
+            color={SERIES[2]}
+            data={byClient.map((d) => ({ name: d.name, value: d.total }))}
+          />
+
+          <ChartCard title="Production by content type" subtitle="Share of all items" height={240}>
+            <div className="h-full flex items-center gap-4 sm:gap-6">
+              <div className="relative h-full aspect-square max-w-[50%] shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={byContentType}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius="68%"
+                      outerRadius="96%"
+                      paddingAngle={2}
+                      cornerRadius={4}
+                      stroke="#fff"
+                      strokeWidth={2}
+                      startAngle={90}
+                      endAngle={-270}
+                      animationDuration={700}
+                    >
+                      {byContentType.map((d) => (
+                        <Cell key={d.name} fill={d.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<ChartTooltip colorFor={(e) => (e.payload?.color as string) ?? undefined} />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-2xl font-bold tracking-tight text-ink-900">{compact(contentTotal)}</span>
+                  <span className="text-[11px] font-medium text-ink-500">items</span>
+                </div>
+              </div>
+              <ul className="flex-1 min-w-0 flex flex-col gap-2">
+                {byContentType.map((d) => (
+                  <li key={d.name} className="flex items-center gap-2 text-[13px]">
+                    <span className="h-2.5 w-2.5 rounded-[3px] shrink-0" style={{ background: d.color }} />
+                    <span className="flex-1 min-w-0 truncate text-ink-700">{d.name}</span>
+                    <span className="font-semibold text-ink-900 tabular-nums">{d.value.toLocaleString()}</span>
+                    <span className="w-10 text-right text-xs text-ink-500 tabular-nums">
+                      {contentTotal ? Math.round((d.value / contentTotal) * 100) : 0}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </ChartCard>
 
-          <ChartCard title="Production by Client">
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={byClient}>
-                <defs>
-                  <linearGradient id="barAmber" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#D2920F" />
-                    <stop offset="100%" stopColor="#B5790A" />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ fill: '#FDF5E7' }} />
-                <Bar dataKey="total" fill="url(#barAmber)" radius={[8, 8, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="Production by Content Type">
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie
-                  data={byContentType}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={55}
-                  outerRadius={90}
-                  paddingAngle={3}
-                  cornerRadius={6}
-                >
-                  {byContentType.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="none" />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="Completed vs In Progress">
-            <div className="relative flex flex-col items-center">
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={statusSplit}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="90%"
-                    innerRadius={80}
-                    outerRadius={110}
-                    paddingAngle={3}
-                    cornerRadius={8}
-                    startAngle={180}
-                    endAngle={0}
-                  >
-                    <Cell fill="#177566" stroke="none" />
-                    <Cell fill="#DBDDD7" stroke="none" />
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-x-0 bottom-6 flex flex-col items-center pointer-events-none">
-                <span className="text-2xl font-semibold text-ink-900">{completionPct}%</span>
-                <span className="text-xs text-ink-500">Completed</span>
+          <ChartCard title="Completed vs in progress" subtitle="By item count" height={240}>
+            <div className="h-full flex flex-col items-center justify-center">
+              <div className="relative w-full max-w-[300px] h-[150px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <defs>
+                      <linearGradient id="gaugeFill" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor={SERIES[0]} stopOpacity={0.7} />
+                        <stop offset="100%" stopColor={SERIES[0]} />
+                      </linearGradient>
+                    </defs>
+                    <Pie
+                      data={[{ value: 1 }]}
+                      dataKey="value"
+                      cx="50%"
+                      cy="100%"
+                      innerRadius="150%"
+                      outerRadius="196%"
+                      startAngle={180}
+                      endAngle={0}
+                      fill={INK.grid}
+                      stroke="none"
+                      isAnimationActive={false}
+                    />
+                    <Pie
+                      data={statusSplit}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="100%"
+                      innerRadius="150%"
+                      outerRadius="196%"
+                      cornerRadius={6}
+                      startAngle={180}
+                      endAngle={0}
+                      stroke="none"
+                      animationDuration={800}
+                    >
+                      <Cell fill="url(#gaugeFill)" />
+                      <Cell fill="transparent" />
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-x-0 bottom-0 flex flex-col items-center pointer-events-none">
+                  <span className="text-[32px] leading-none font-bold tracking-tight text-ink-900">{completionPct}%</span>
+                  <span className="text-xs text-ink-500 mt-1">completed</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-6 mt-5">
+                {statusSplit.map((s, i) => (
+                  <div key={s.name} className="flex items-center gap-2 text-[13px]">
+                    <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: i === 0 ? SERIES[0] : INK.grid }} />
+                    <span className="text-ink-600">{s.name}</span>
+                    <span className="font-semibold text-ink-900 tabular-nums">{s.value.toLocaleString()}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </ChartCard>
 
-          <ChartCard title="Production Over Time" className="lg:col-span-2">
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={overTime}>
+          <ChartCard
+            title="Production over time"
+            subtitle={`${compact(overTime.reduce((s, d) => s + d.total, 0))} items across ${overTime.length} day${overTime.length === 1 ? '' : 's'}`}
+            className="lg:col-span-2"
+            height={260}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={overTime} margin={chartMargin}>
                 <defs>
-                  <linearGradient id="areaGreen" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#177566" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#177566" stopOpacity={0} />
-                  </linearGradient>
+                  <AreaGradient id="prodArea" color={SERIES[0]} strength={0.24} />
+                  <GlowFilter id="prodGlow" color={SERIES[0]} />
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#EDEFEA" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                <Tooltip />
+                <CartesianGrid {...gridProps} />
+                <XAxis dataKey="date" {...xAxisProps} tickFormatter={(d: string) => formatDate(d, 'MMM d')} />
+                <YAxis {...yAxisProps} allowDecimals={false} {...niceY(maxOf(overTime, ['total']), { integer: true })} />
+                <Tooltip cursor={lineCursor} content={<ChartTooltip labelFormatter={(d) => formatDate(String(d), 'EEE, MMM d')} />} />
                 <Area
-                  type="monotone"
+                  {...lineProps}
                   dataKey="total"
-                  stroke="#177566"
-                  strokeWidth={2.5}
-                  fill="url(#areaGreen)"
-                  dot={{ r: 3, fill: '#177566', strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: '#177566', strokeWidth: 0 }}
+                  name="Items"
+                  stroke={SERIES[0]}
+                  fill="url(#prodArea)"
+                  filter="url(#prodGlow)"
+                  activeDot={activeDot(SERIES[0])}
+                  animationDuration={700}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -482,16 +527,5 @@ export default function Reports() {
         </div>
       )}
     </div>
-  )
-}
-
-function ChartCard({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
-  return (
-    <Card className={className}>
-      <div className="p-5">
-        <h3 className="text-sm font-semibold text-ink-800 mb-3">{title}</h3>
-        {children}
-      </div>
-    </Card>
   )
 }

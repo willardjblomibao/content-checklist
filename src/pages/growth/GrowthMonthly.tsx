@@ -1,14 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from 'recharts'
+import { MonthlyCompareChart } from '../../components/charts/GrowthCharts'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { Card, EmptyState, PageSpinner, Select } from '../../components/ui/primitives'
@@ -182,24 +173,13 @@ export default function GrowthMonthly() {
             )}
           </div>
 
-          <Card className="p-5">
-            <h2 className="text-[15px] font-semibold text-ink-900 mb-4">
-              Monthly Views {showCompare ? `— ${yearLabel} vs ${compareYear}` : `— ${yearLabel}`}
-            </h2>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthly} margin={{ left: -10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF0EE" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10 }} tickFormatter={(m: string) => m.slice(0, 3)} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="current" name={`${yearLabel}`} fill="#2F6B4F" radius={[4, 4, 0, 0]} />
-                  {showCompare && <Bar dataKey="prior" name={`${compareYear}`} fill="#D97757" radius={[4, 4, 0, 0]} />}
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+          <MonthlyCompareChart
+            data={monthly}
+            title={`Monthly views · ${showCompare ? `${yearLabel} vs ${compareYear}` : yearLabel}`}
+            currentLabel={String(yearLabel)}
+            compareLabel={String(compareYear)}
+            showCompare={showCompare}
+          />
 
           <Card className="overflow-hidden">
             <div className="px-5 py-4 border-b border-ink-100">

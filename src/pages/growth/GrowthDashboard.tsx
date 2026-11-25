@@ -1,19 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { TrendingUp, Eye, Users, Sparkles, PlusSquare, Calendar, Radio, Trophy, Gauge, Flame, Target } from 'lucide-react'
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from 'recharts'
+import { WeeklyTrendChart, PlatformBarChart } from '../../components/charts/GrowthCharts'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { Button, Card, EmptyState, PageSpinner, Select } from '../../components/ui/primitives'
@@ -312,43 +300,12 @@ export default function GrowthDashboard() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="p-5">
-              <h2 className="text-[15px] font-semibold text-ink-900 mb-4">
-                Weekly Views &amp; Audience{platformFilter ? ` — ${platforms.find((p) => p.id === platformFilter)?.name ?? ''}` : ''}
-              </h2>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData} margin={{ left: -10, right: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#EEF0EE" />
-                    <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="Views" stroke="#2F6B4F" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="New Audience" stroke="#D97757" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
+            <WeeklyTrendChart
+              data={trendData}
+              title={`Weekly views & audience${platformFilter ? ` · ${platforms.find((p) => p.id === platformFilter)?.name ?? ''}` : ''}`}
+            />
 
-            <Card className="p-5">
-              <h2 className="text-[15px] font-semibold text-ink-900 mb-4">Platform Comparison (all platforms)</h2>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={platformTotals} margin={{ left: -10, right: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#EEF0EE" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="views" name="Views" radius={[6, 6, 0, 0]}>
-                      {platformTotals.map((p) => (
-                        <Cell key={p.name} fill={p.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
+            <PlatformBarChart data={platformTotals} />
           </div>
 
           <Card className="overflow-hidden">
