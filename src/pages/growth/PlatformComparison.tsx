@@ -1,18 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GitCompare, FileDown, FileSpreadsheet, FileText, Crown } from 'lucide-react'
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from 'recharts'
 import * as XLSX from 'xlsx'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { PlatformVsChart } from '../../components/charts/GrowthCharts'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { Button, Card, EmptyState, PageSpinner, Select } from '../../components/ui/primitives'
@@ -323,22 +314,7 @@ export default function PlatformComparison() {
             />
           </div>
 
-          <Card className="p-5">
-            <h2 className="text-[15px] font-semibold text-ink-900 mb-4">Monthly Views — {platformAName} vs {platformBName}</h2>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ left: -10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF0EE" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey={platformAName} stroke="#2F6B4F" strokeWidth={2.5} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey={platformBName} stroke="#D97757" strokeWidth={2.5} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+          <PlatformVsChart data={chartData} aName={platformAName} bName={platformBName} title={`Monthly views · ${platformAName} vs ${platformBName}`} />
 
           <Card className="overflow-hidden">
             <div className="px-5 py-4 border-b border-ink-100">

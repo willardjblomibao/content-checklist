@@ -2,13 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Papa from 'papaparse'
 import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, ComposedChart, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-} from 'recharts'
-import {
   Download, Printer, FileWarning, Eye, Users, Sparkles, Calendar, Radio,
   Trophy, Gauge, Flame, Target, TrendingUp, Zap, Video, Clock, GitCompare, Crown,
 } from 'lucide-react'
+import { WeeklyTrendChart, PlatformBarChart, MonthlyCompareChart, ContentImpactCharts, PlatformVsChart } from '../components/charts/GrowthCharts'
 import { supabase } from '../lib/supabase'
 import { Button, Card, EmptyState, PageSpinner, Select } from '../components/ui/primitives'
 import { MONTH_NAMES } from '../types/database'
@@ -318,39 +315,9 @@ function DashboardTab({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="p-5">
-              <h2 className="text-[15px] font-semibold text-ink-900 mb-4">Weekly Views &amp; Audience</h2>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData} margin={{ left: -10, right: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#EEF0EE" />
-                    <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="Views" stroke="#2F6B4F" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="New Audience" stroke="#D97757" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
+            <WeeklyTrendChart data={trendData} title="Weekly views & audience" />
 
-            <Card className="p-5">
-              <h2 className="text-[15px] font-semibold text-ink-900 mb-4">Platform Comparison (all platforms)</h2>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={platformTotals} margin={{ left: -10, right: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#EEF0EE" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="views" name="Views" radius={[6, 6, 0, 0]}>
-                      {platformTotals.map((p) => <Cell key={p.name} fill={p.color} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
+            <PlatformBarChart data={platformTotals} />
           </div>
 
           <Card className="overflow-hidden">
@@ -485,24 +452,13 @@ function MonthlyTab({ metrics }: { metrics: GrowthMetricRow[] }) {
             )}
           </div>
 
-          <Card className="p-5">
-            <h2 className="text-[15px] font-semibold text-ink-900 mb-4">
-              Monthly Views {showCompare ? `— ${yearLabel} vs ${compareYear}` : `— ${yearLabel}`}
-            </h2>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthly} margin={{ left: -10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF0EE" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10 }} tickFormatter={(m: string) => m.slice(0, 3)} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="current" name={`${yearLabel}`} fill="#2F6B4F" radius={[4, 4, 0, 0]} />
-                  {showCompare && <Bar dataKey="prior" name={`${compareYear}`} fill="#D97757" radius={[4, 4, 0, 0]} />}
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+          <MonthlyCompareChart
+            data={monthly}
+            title={`Monthly views · ${showCompare ? `${yearLabel} vs ${compareYear}` : yearLabel}`}
+            currentLabel={String(yearLabel)}
+            compareLabel={String(compareYear)}
+            showCompare={showCompare}
+          />
 
           <Card className="overflow-hidden">
             <div className="px-5 py-4 border-b border-ink-100"><h2 className="text-[15px] font-semibold text-ink-900">Quarterly Rollup</h2></div>
@@ -633,23 +589,7 @@ function CorrelationTab({ metrics, production }: { metrics: GrowthMetricRow[]; p
             </p>
           </Card>
 
-          <Card className="p-5">
-            <h2 className="text-[15px] font-semibold text-ink-900 mb-4">Content Output vs. Views, Week by Week</h2>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ left: -10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF0EE" />
-                  <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                  <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar yAxisId="left" dataKey="Content Items" fill="#D97757" radius={[4, 4, 0, 0]} barSize={18} />
-                  <Line yAxisId="right" type="monotone" dataKey="Views" stroke="#2F6B4F" strokeWidth={2.5} dot={{ r: 3 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+          <ContentImpactCharts data={chartData} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <Card className="p-5">
@@ -787,22 +727,7 @@ function CompareTab({ metrics, platforms, clientName }: { metrics: GrowthMetricR
             <ComparisonCard name={platformBName} views={totals.bViews} followers={totals.bFollowers} vpf={totals.bVpf} fpd={totals.bFpd} isViewsWinner={winner(totals.aViews, totals.bViews) === 'b'} isFollowersWinner={winner(totals.aFollowers, totals.bFollowers) === 'b'} />
           </div>
 
-          <Card className="p-5">
-            <h2 className="text-[15px] font-semibold text-ink-900 mb-4 flex items-center gap-2"><GitCompare className="h-4 w-4 text-pine-700" />Monthly Views — {platformAName} vs {platformBName}</h2>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ left: -10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#EEF0EE" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey={platformAName} stroke="#2F6B4F" strokeWidth={2.5} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey={platformBName} stroke="#D97757" strokeWidth={2.5} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+          <PlatformVsChart data={chartData} aName={platformAName} bName={platformBName} title={`Monthly views · ${platformAName} vs ${platformBName}`} />
 
           <Card className="overflow-hidden">
             <div className="px-5 py-4 border-b border-ink-100"><h2 className="text-[15px] font-semibold text-ink-900">Monthly Breakdown</h2></div>
