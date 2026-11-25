@@ -62,7 +62,7 @@ export default function Platforms() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-ink-900">Platforms</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Platforms</h1>
           <p className="text-sm text-ink-500 mt-1">The channels each client is tracked on — feeds the Weekly Growth Input form.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -91,7 +91,7 @@ export default function Platforms() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                   <th className="px-5 py-3">Platform</th>
                   <th className="px-3 py-3">Status</th>
                   <th className="px-5 py-3 text-right">Actions</th>
@@ -113,14 +113,14 @@ export default function Platforms() {
                       <div className="flex justify-end gap-1">
                         <button
                           onClick={() => setEditing(p)}
-                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-md"
+                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
                           aria-label="Edit"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => setToDelete(p)}
-                          className="p-1.5 text-ink-500 hover:text-clay-600 hover:bg-clay-50 rounded-md"
+                          className="p-1.5 text-ink-500 hover:text-clay-600 hover:bg-clay-50 rounded-lg"
                           aria-label="Delete"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

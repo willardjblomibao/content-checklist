@@ -396,14 +396,14 @@ export default function GrowthInput() {
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
       <div>
-        <h1 className="text-xl font-semibold text-ink-900">Weekly Growth Input</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Weekly Growth Input</h1>
         <p className="text-sm text-ink-500 mt-1">One row per platform, one entry per week — saving again for the same week updates it.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <Card>
           <CardHeader className="pb-0">
-            <h2 className="text-sm font-semibold text-ink-800">Client &amp; Week</h2>
+            <h2 className="text-[15px] font-semibold text-ink-900">Client &amp; Week</h2>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
             <Field label="Client" required>
@@ -424,7 +424,7 @@ export default function GrowthInput() {
                   ))}
                 </Select>
               ) : (
-                <div className="h-9 flex items-center px-3 text-sm text-ink-700 bg-ink-50 border border-ink-100 rounded-md">
+                <div className="h-10 flex items-center px-3 text-sm text-ink-700 bg-ink-50 border border-ink-100 rounded-lg">
                   {assignedClients[0]?.name ?? 'No client assigned'}
                 </div>
               )}
@@ -438,7 +438,7 @@ export default function GrowthInput() {
               />
             </Field>
             <Field label="Total (this entry)">
-              <div className="h-9 flex items-center px-3 text-sm text-ink-700 bg-ink-50 border border-ink-100 rounded-md">
+              <div className="h-10 flex items-center px-3 text-sm text-ink-700 bg-ink-50 border border-ink-100 rounded-lg">
                 {totals.views.toLocaleString()} views · {totals.audience.toLocaleString()} new
               </div>
             </Field>
@@ -448,7 +448,7 @@ export default function GrowthInput() {
         <Card>
           <CardHeader className="pb-0 flex items-center justify-between flex-wrap gap-2">
             <div>
-              <h2 className="text-sm font-semibold text-ink-800">Import Monthly Report</h2>
+              <h2 className="text-[15px] font-semibold text-ink-900">Import Monthly Report</h2>
               <p className="text-xs text-ink-500 mt-0.5">Upload a "20XX Growth"-style workbook, or paste the two header rows plus your monthly totals.</p>
             </div>
             <div className="flex items-center gap-2">
@@ -476,7 +476,7 @@ export default function GrowthInput() {
           </CardHeader>
           {showMonthlyImport && (
             <CardContent className="pt-0">
-              <div className="mt-3 flex flex-col gap-3 bg-ink-50 border border-ink-100 rounded-md p-3">
+              <div className="mt-3 flex flex-col gap-3 bg-ink-50 border border-ink-100 rounded-xl p-3">
                 <div className="flex items-end gap-3 flex-wrap">
                   <Field label="Year for these rows">
                     <Input
@@ -543,7 +543,7 @@ export default function GrowthInput() {
 
         <Card>
           <CardHeader className="pb-0 flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-sm font-semibold text-ink-800">Platforms</h2>
+            <h2 className="text-[15px] font-semibold text-ink-900">Platforms</h2>
             <div className="flex items-center gap-2">
               <Button type="button" variant="secondary" size="sm" onClick={() => setShowBulk((v) => !v)}>
                 <ClipboardPaste className="h-3.5 w-3.5" />
@@ -569,7 +569,7 @@ export default function GrowthInput() {
           </CardHeader>
           {showBulk && (
             <CardContent className="pt-0">
-              <div className="mt-3 flex flex-col gap-2 bg-ink-50 border border-ink-100 rounded-md p-3">
+              <div className="mt-3 flex flex-col gap-2 bg-ink-50 border border-ink-100 rounded-xl p-3">
                 <p className="text-xs text-ink-500">
                   Paste rows copied from Excel/Sheets: one platform per line, <code>Platform&#9;Views&#9;New Audience</code> (tab or comma separated).
                 </p>
@@ -658,7 +658,7 @@ export default function GrowthInput() {
       </form>
 
       <div>
-        <h2 className="text-sm font-semibold text-ink-700 mb-3">Recent Entries</h2>
+        <h2 className="text-[15px] font-semibold text-ink-900 mb-3">Recent Entries</h2>
         <Card className="overflow-hidden">
           {loadingRecent ? (
             <PageSpinner />
@@ -668,7 +668,7 @@ export default function GrowthInput() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                  <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                     <th className="px-5 py-3">Week</th>
                     <th className="px-3 py-3">Platform</th>
                     <th className="px-3 py-3 text-right">Views</th>
@@ -702,7 +702,7 @@ export default function GrowthInput() {
                             )}
                             <button
                               onClick={() => setToDelete(r)}
-                              className="p-1.5 text-ink-500 hover:text-clay-600 hover:bg-clay-50 rounded-md"
+                              className="p-1.5 text-ink-500 hover:text-clay-600 hover:bg-clay-50 rounded-lg"
                               aria-label="Delete"
                             >
                               <Trash2 className="h-3.5 w-3.5" />

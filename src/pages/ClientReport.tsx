@@ -131,7 +131,7 @@ export default function ClientReport() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-ink-900">{clientName} — Growth Report</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{clientName} — Growth Report</h1>
             <p className="text-sm text-ink-500 mt-1">View-only · filter, export, or print any section below</p>
           </div>
           <Button size="sm" onClick={handlePrint} className="print:hidden">
@@ -319,7 +319,7 @@ function DashboardTab({
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-ink-800 mb-4">Weekly Views &amp; Audience</h2>
+              <h2 className="text-[15px] font-semibold text-ink-900 mb-4">Weekly Views &amp; Audience</h2>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trendData} margin={{ left: -10, right: 10 }}>
@@ -336,7 +336,7 @@ function DashboardTab({
             </Card>
 
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-ink-800 mb-4">Platform Comparison (all platforms)</h2>
+              <h2 className="text-[15px] font-semibold text-ink-900 mb-4">Platform Comparison (all platforms)</h2>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={platformTotals} margin={{ left: -10, right: 10 }}>
@@ -355,12 +355,12 @@ function DashboardTab({
 
           <Card className="overflow-hidden">
             <div className="px-5 py-4 border-b border-ink-100">
-              <h2 className="text-sm font-semibold text-ink-800">Platform Breakdown</h2>
+              <h2 className="text-[15px] font-semibold text-ink-900">Platform Breakdown</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                  <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                     <th className="px-5 py-3">Platform</th>
                     <th className="px-3 py-3 text-right">Views</th>
                     <th className="px-3 py-3 text-right">New Audience</th>
@@ -486,7 +486,7 @@ function MonthlyTab({ metrics }: { metrics: GrowthMetricRow[] }) {
           </div>
 
           <Card className="p-5">
-            <h2 className="text-sm font-semibold text-ink-800 mb-4">
+            <h2 className="text-[15px] font-semibold text-ink-900 mb-4">
               Monthly Views {showCompare ? `— ${yearLabel} vs ${compareYear}` : `— ${yearLabel}`}
             </h2>
             <div className="h-72">
@@ -505,11 +505,11 @@ function MonthlyTab({ metrics }: { metrics: GrowthMetricRow[] }) {
           </Card>
 
           <Card className="overflow-hidden">
-            <div className="px-5 py-4 border-b border-ink-100"><h2 className="text-sm font-semibold text-ink-800">Quarterly Rollup</h2></div>
+            <div className="px-5 py-4 border-b border-ink-100"><h2 className="text-[15px] font-semibold text-ink-900">Quarterly Rollup</h2></div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                  <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                     <th className="px-5 py-3">Quarter</th>
                     <th className="px-3 py-3 text-right">{yearLabel} Views</th>
                     {showCompare && <th className="px-3 py-3 text-right">{compareYear} Views</th>}
@@ -634,7 +634,7 @@ function CorrelationTab({ metrics, production }: { metrics: GrowthMetricRow[]; p
           </Card>
 
           <Card className="p-5">
-            <h2 className="text-sm font-semibold text-ink-800 mb-4">Content Output vs. Views, Week by Week</h2>
+            <h2 className="text-[15px] font-semibold text-ink-900 mb-4">Content Output vs. Views, Week by Week</h2>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ left: -10, right: 10 }}>
@@ -653,7 +653,7 @@ function CorrelationTab({ metrics, production }: { metrics: GrowthMetricRow[]; p
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-ink-800 mb-3 flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-500" />Busiest Content Week</h2>
+              <h2 className="text-[15px] font-semibold text-ink-900 mb-3 flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-500" />Busiest Content Week</h2>
               {bestContentWeek ? (
                 <div>
                   <p className="text-lg font-semibold text-ink-900">{formatDate(bestContentWeek.week_start)}</p>
@@ -665,7 +665,7 @@ function CorrelationTab({ metrics, production }: { metrics: GrowthMetricRow[]; p
               ) : <p className="text-sm text-ink-400">No data</p>}
             </Card>
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-ink-800 mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-pine-600" />Best Growth Week</h2>
+              <h2 className="text-[15px] font-semibold text-ink-900 mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-pine-600" />Best Growth Week</h2>
               {bestGrowthWeek ? (
                 <div>
                   <p className="text-lg font-semibold text-ink-900">{formatDate(bestGrowthWeek.week_start)}</p>
@@ -788,7 +788,7 @@ function CompareTab({ metrics, platforms, clientName }: { metrics: GrowthMetricR
           </div>
 
           <Card className="p-5">
-            <h2 className="text-sm font-semibold text-ink-800 mb-4 flex items-center gap-2"><GitCompare className="h-4 w-4 text-pine-700" />Monthly Views — {platformAName} vs {platformBName}</h2>
+            <h2 className="text-[15px] font-semibold text-ink-900 mb-4 flex items-center gap-2"><GitCompare className="h-4 w-4 text-pine-700" />Monthly Views — {platformAName} vs {platformBName}</h2>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ left: -10, right: 10 }}>
@@ -805,11 +805,11 @@ function CompareTab({ metrics, platforms, clientName }: { metrics: GrowthMetricR
           </Card>
 
           <Card className="overflow-hidden">
-            <div className="px-5 py-4 border-b border-ink-100"><h2 className="text-sm font-semibold text-ink-800">Monthly Breakdown</h2></div>
+            <div className="px-5 py-4 border-b border-ink-100"><h2 className="text-[15px] font-semibold text-ink-900">Monthly Breakdown</h2></div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                  <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                     <th className="px-5 py-3">Month</th>
                     <th className="px-3 py-3 text-right">{platformAName} Views</th>
                     <th className="px-3 py-3 text-right">{platformAName} Followers</th>

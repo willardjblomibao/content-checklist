@@ -184,7 +184,7 @@ export default function GrowthDashboard() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-ink-900">Growth Dashboard</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Growth Dashboard</h1>
           <p className="text-sm text-ink-500 mt-1">
             {selectedClient ? `Views and audience growth for ${selectedClient.name}` : 'Reach and audience growth across platforms'}
           </p>
@@ -313,7 +313,7 @@ export default function GrowthDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-ink-800 mb-4">
+              <h2 className="text-[15px] font-semibold text-ink-900 mb-4">
                 Weekly Views &amp; Audience{platformFilter ? ` — ${platforms.find((p) => p.id === platformFilter)?.name ?? ''}` : ''}
               </h2>
               <div className="h-72">
@@ -332,7 +332,7 @@ export default function GrowthDashboard() {
             </Card>
 
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-ink-800 mb-4">Platform Comparison (all platforms)</h2>
+              <h2 className="text-[15px] font-semibold text-ink-900 mb-4">Platform Comparison (all platforms)</h2>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={platformTotals} margin={{ left: -10, right: 10 }}>
@@ -353,12 +353,12 @@ export default function GrowthDashboard() {
 
           <Card className="overflow-hidden">
             <div className="px-5 py-4 border-b border-ink-100">
-              <h2 className="text-sm font-semibold text-ink-800">Platform Breakdown (all platforms)</h2>
+              <h2 className="text-[15px] font-semibold text-ink-900">Platform Breakdown (all platforms)</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                  <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                     <th className="px-5 py-3">Platform</th>
                     <th className="px-3 py-3 text-right">Views</th>
                     <th className="px-3 py-3 text-right">New Audience</th>

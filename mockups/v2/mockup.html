@@ -1,0 +1,305 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+:root{--canvas:#F6F7F4;--surface:#fff;--border:#E9EBE5;--text:#1C1E1C;--muted:#727872;--faint:#95998F;--accent:#177566;--accent2:#1B8878;--soft:#EFF8F6;--soft2:#DCF0EB;--deep:#0F4F44;--amber:#B5790A;--amberSoft:#FBEACB;--clay:#C65D4C;--claySoft:#F7DFDA;--violet:#6b5bd2;--chip:#F3F4F0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--canvas);color:var(--text);font-size:14px}
+.app{display:flex;width:1440px;height:900px;overflow:hidden}
+aside{width:244px;background:var(--surface);border-right:1px solid var(--border);padding:18px 14px;display:flex;flex-direction:column;gap:2px;flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px;padding:0 6px 16px}
+.logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#1B8878,#0F4F44);color:#fff;display:grid;place-items:center;font-weight:700}
+.brand b{font-size:15px;display:flex;align-items:center;gap:6px}.brand small{display:block;color:var(--faint);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.v2{font-size:10px;font-weight:700;color:var(--accent);background:var(--soft2);border-radius:5px;padding:1px 5px}
+.logbtn{background:var(--accent);color:#fff;border-radius:10px;padding:11px 14px;font-weight:600;display:flex;gap:8px;align-items:center;margin-bottom:14px;box-shadow:0 1px 2px rgba(15,79,68,.25),inset 0 1px 0 rgba(255,255,255,.15)}
+.logbtn .k{margin-left:auto;font-size:11px;opacity:.75;border:1px solid rgba(255,255,255,.35);border-radius:5px;padding:0 5px}
+.nav{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:#565B56;font-weight:500}
+.nav.on{background:var(--soft);color:var(--deep);font-weight:600}
+.nav svg{width:17px;height:17px;flex-shrink:0}
+.grp{font-size:11px;font-weight:600;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;padding:16px 10px 6px;display:flex;justify-content:space-between}
+.sub{padding:7px 10px 7px 37px;color:#565B56;font-size:13px;border-radius:8px;position:relative}
+.sub.on{background:var(--soft);color:var(--deep);font-weight:600}
+.sub.on:before{content:"";position:absolute;left:18px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--accent)}
+.me{margin-top:auto;border-top:1px solid var(--border);padding-top:14px;display:flex;gap:10px;align-items:center}
+.av{width:32px;height:32px;border-radius:50%;background:#D2920F;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:600;flex-shrink:0}
+.me small{display:block;color:var(--muted);font-size:12px}
+main{flex:1;display:flex;flex-direction:column;min-width:0}
+.top{height:60px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:10px;padding:0 28px;flex-shrink:0}
+.crumb{color:var(--muted);margin-right:14px}.crumb b{color:var(--text)}
+.pill{border:1px solid var(--border);border-radius:8px;padding:7px 12px;background:var(--surface);display:inline-flex;gap:8px;align-items:center;font-weight:500;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent2)}
+.search{margin-left:auto;width:250px;color:var(--faint)}
+.bell{width:36px;height:36px;border:1px solid var(--border);border-radius:8px;display:grid;place-items:center;position:relative}
+.bell i{position:absolute;top:7px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--clay)}
+.page{padding:24px 28px;overflow:hidden;flex:1;display:flex;flex-direction:column;gap:18px}
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+h1{font-size:22px;font-weight:650;letter-spacing:-.015em}
+.subt{color:var(--muted);margin-top:4px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border)}
+.tab{padding:9px 14px;color:var(--muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.on{color:var(--deep);border-color:var(--accent);font-weight:600}
+.btn{background:var(--accent);color:#fff;border-radius:9px;padding:9px 16px;font-weight:600;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.btn.sec{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
+.card.p0{padding:0;overflow:hidden}
+.h3{font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.h3 em{font-style:normal;color:var(--muted);font-weight:500;font-size:12px}
+.grid{display:grid;gap:16px}
+.kpi small{color:var(--muted);font-weight:500;font-size:13px}.kpi b{font-size:26px;display:block;margin:6px 0 2px;letter-spacing:-.02em}
+.up{color:var(--accent2);font-size:12px;font-weight:600}.down{color:var(--clay);font-size:12px;font-weight:600}.mut{color:var(--muted);font-size:12px}
+.badge{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--soft2);color:var(--deep);white-space:nowrap}
+.badge.w{background:var(--amberSoft);color:var(--amber)}.badge.g{background:var(--chip);color:#565B56}.badge.r{background:var(--claySoft);color:#B14B3C}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:11px 16px;background:#FAFBF8;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:12px 16px;border-bottom:1px solid var(--border);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.ico{width:34px;height:34px;border-radius:9px;background:var(--chip);display:grid;place-items:center;font-size:15px;flex-shrink:0}
+.row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--border)}
+.row:first-child{border-top:0}
+.bar{height:8px;border-radius:99px;background:var(--chip);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent)}
+.hero{background:linear-gradient(120deg,#0F4F44,#177566);color:#fff;border-radius:16px;padding:24px;display:flex;justify-content:space-between;align-items:center}
+.hero small{color:#9fd3c7;font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:11px}
+.hero .big{font-size:30px;font-weight:700;margin:6px 0;letter-spacing:-.02em}
+.hero .tags{display:flex;gap:8px;margin-top:12px}
+.hero .tags span{background:rgba(255,255,255,.14);padding:5px 10px;border-radius:999px;font-size:12px;font-weight:500}
+.herobtn{background:#fff;color:var(--deep);font-weight:700;padding:12px 20px;border-radius:10px}
+.heat{display:grid;grid-template-columns:repeat(30,1fr);gap:4px;margin-top:14px}
+.heat span{aspect-ratio:1;border-radius:3px}
+.field label{display:block;font-size:13px;font-weight:600;color:#3D413D;margin-bottom:6px}
+.inp{border:1px solid var(--border);border-radius:9px;padding:10px 12px;background:var(--surface);display:flex;justify-content:space-between;color:var(--text)}
+.inp.ph2{color:var(--faint)}
+.seg{display:inline-flex;background:var(--chip);border-radius:10px;padding:3px;gap:2px}
+.seg span{padding:7px 14px;border-radius:8px;font-weight:500;color:var(--muted);font-size:13px}
+.seg span.on{background:#fff;color:var(--text);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.choice{border:1.5px solid var(--border);border-radius:12px;padding:14px;display:flex;gap:12px;align-items:center;flex:1}
+.choice.on{border-color:var(--accent);background:var(--soft)}
+.choice .r{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);margin-left:auto}
+.choice.on .r{border:5px solid var(--accent)}
+.counter{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.counter span{width:38px;height:36px;display:grid;place-items:center;font-size:18px;color:var(--muted);background:#FAFBF8}
+.counter b{width:48px;text-align:center;font-size:16px}
+.prodrow{display:grid;grid-template-columns:44px 1fr auto auto;gap:16px;align-items:center;padding:14px 0;border-top:1px solid var(--border)}
+.prodrow:first-child{border-top:0}
+.sticky{background:var(--surface);border-top:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:20px;box-shadow:0 -4px 16px rgba(0,0,0,.04)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted)}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.tl{display:flex;gap:14px;padding:14px 0;border-top:1px solid var(--border)}.tl:first-child{border-top:0}
+.tl .dot2{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:13px;flex-shrink:0}
+/* phone */
+.phones{display:flex;gap:40px;padding:40px;width:1440px;height:900px;background:var(--canvas);justify-content:center;align-items:center}
+.phone{width:375px;height:800px;background:var(--canvas);border-radius:44px;border:10px solid #1C1E1C;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.15)}
+.ptop{height:56px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;margin-top:24px}
+.pbody{flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.tabbar{height:74px;background:#fff;border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:center;padding-bottom:12px}
+.tabbar div{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted);font-weight:500}
+.tabbar div.on{color:var(--deep);font-weight:600}
+.tabbar .plus{width:52px;height:52px;border-radius:16px;background:var(--accent);color:#fff;font-size:26px;display:grid;place-items:center;margin-top:-26px;box-shadow:0 6px 16px rgba(23,117,102,.4)}
+.caption{width:300px}
+.caption h2{font-size:26px;letter-spacing:-.02em;margin-bottom:10px}
+.caption p{color:var(--muted);line-height:1.55;margin-bottom:10px}
+</style></head>
+<body><div id="root"></div>
+<script>
+const I={
+home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+hist:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+grow:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'};
+const svg=(k,s=17)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>`;
+let seed=7;const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280};
+
+const growthSubs=[['overview','Overview'],['input','Weekly input'],['monthly','Monthly summary'],['compare','Compare platforms'],['impact','Content impact'],['reports','Reports'],['activity','Activity log']];
+function shell(active,crumb,body,{sticky='',filters=true}={}){
+ const n=(k,ic,l)=>`<div class="nav ${active===k?'on':''}">${svg(ic)}${l}</div>`;
+ const inGrowth=growthSubs.some(g=>g[0]===active);
+ return `<div class="app"><aside>
+ <div class="brand"><div class="logo">P</div><div><b>Partnerlee <span class="v2">2.0</span></b><small>Content Tracker</small></div></div>
+ <div class="logbtn">＋ Log today's work <span class="k">N</span></div>
+ ${n('home','home','Home')}${n('history','hist','History')}
+ <div class="grp">Growth <span>▾</span></div>
+ ${growthSubs.map(([k,l])=>`<div class="sub ${active===k?'on':''}">${l}</div>`).join('')}
+ <div style="height:10px"></div>${n('settings','set','Settings')}
+ <div class="me"><div class="av" style="background:#1B8878">AM</div><div><b>Ana Mendoza</b><small>Content Assistant</small></div></div>
+ </aside><main>
+ <div class="top"><span class="crumb">${crumb}</span>
+ ${filters?`<span class="pill"><span class="dot"></span>Acme Coffee ▾</span><span class="pill">📅 This week ▾</span>`:''}
+ <span class="pill search">🔍 Search pages, clients… <span style="margin-left:auto">⌘K</span></span>
+ <div class="bell">${svg('bell')}<i></i></div></div>
+ <div class="page">${body}</div>${sticky}</main></div>`}
+
+const spark=(pts,c='#1B8878')=>`<svg viewBox="0 0 100 28" style="height:28px;width:100%;margin-top:8px"><polyline fill="none" stroke="${c}" stroke-width="2" points="${pts.map((v,i)=>`${i*100/(pts.length-1)},${28-v}`).join(' ')}"/></svg>`;
+const kpi=(l,v,d,up=true,pts)=>`<div class="card kpi"><small>${l}</small><b>${v}</b><span class="${up?'up':'down'}">${d}</span>${pts?spark(pts,up?'#1B8878':'#C65D4C'):''}</div>`;
+function lineChart(w,h,series,labels){let s=`<svg viewBox="0 0 ${w} ${h+24}" width="100%" style="display:block">`;
+ for(let g=0;g<=4;g++){const y=10+g*(h-10)/4;s+=`<line x1="34" x2="${w}" y1="${y}" y2="${y}" stroke="#EDEFEA"/><text x="0" y="${y+4}" font-size="11" fill="#95998F">${(4-g)*50}k</text>`}
+ series.forEach(([c,data,fill])=>{const pts=data.map((v,i)=>[34+i*(w-50)/(data.length-1),10+(h-10)*(1-v)]);
+  if(fill)s+=`<path d="M${pts.map(p=>p.join(',')).join(' L')} L${w-16},${h} L34,${h}Z" fill="${c}" opacity=".10"/>`;
+  s+=`<polyline fill="none" stroke="${c}" stroke-width="2.5" stroke-linejoin="round" points="${pts.map(p=>p.join(',')).join(' ')}"/>`;
+  pts.forEach((p,i)=>{if(i===pts.length-1)s+=`<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="#fff" stroke="${c}" stroke-width="2.5"/>`})});
+ labels.forEach((l,i)=>s+=`<text x="${34+i*(w-50)/(labels.length-1)}" y="${h+18}" font-size="11" fill="#95998F" text-anchor="middle">${l}</text>`);
+ return s+'</svg>'}
+function barChart(w,h,groups,colors,labels){let s=`<svg viewBox="0 0 ${w} ${h+24}" width="100%" style="display:block">`;
+ for(let g=0;g<=4;g++){const y=g*h/4;s+=`<line x1="0" x2="${w}" y1="${y}" y2="${y}" stroke="#EDEFEA"/>`}
+ const gw=w/groups.length;groups.forEach((vals,i)=>{const bw=Math.min(18,(gw-14)/vals.length);vals.forEach((v,j)=>{const x=i*gw+(gw-bw*vals.length-3*(vals.length-1))/2+j*(bw+3);s+=`<rect x="${x}" y="${h-v*h}" width="${bw}" height="${v*h}" rx="4" fill="${colors[j]}"/>`});
+ s+=`<text x="${i*gw+gw/2}" y="${h+18}" font-size="11" fill="#95998F" text-anchor="middle">${labels[i]}</text>`});return s+'</svg>'}
+const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const S={};
+S.home=()=>shell('home','Workspace / <b>Home</b>',`
+<div class="ph"><div><h1>Good morning, Ana 👋</h1><div class="subt">Wednesday, November 25, 2026 · You're assigned to 3 clients</div></div></div>
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:18px">
+ <div style="display:flex;flex-direction:column;gap:18px">
+  <div class="hero"><div><small>Today</small><div class="big">5 items logged</div><div style="opacity:.85">2 tasks still in progress for Acme Coffee</div>
+   <div class="tags"><span>🎬 3 videos</span><span>🖼 2 carousels</span><span>✍️ 0 text posts</span></div></div>
+   <div style="display:flex;align-items:center;gap:26px"><div style="text-align:center"><b style="font-size:34px;display:block">🔥 12</b><span style="opacity:.8">day streak</span></div><div class="herobtn">Continue log →</div></div></div>
+  <div class="grid" style="grid-template-columns:repeat(4,1fr)">
+   ${kpi('Videos edited','48','▲ 12% vs last week',true,[6,10,8,16,14,20,24])}
+   ${kpi('Carousels','21','▲ 4% vs last week',true,[10,8,14,12,18,16,19])}
+   ${kpi('Text posts','14','▼ 6% vs last week',false,[20,18,19,14,16,10,8])}
+   ${kpi('Re-edits','9','▼ 3 fewer — nice',true,[22,19,16,18,12,10,6])}
+  </div>
+  <div class="card"><div class="h3">Your activity <em>Less <span style="display:inline-flex;gap:3px;vertical-align:-2px">${[0,1,2,3].map(i=>`<i style="width:10px;height:10px;border-radius:2px;background:var(--h${i})"></i>`).join('')}</span> More</em></div><div class="heat" id="heat"></div></div>
+ </div>
+ <div style="display:flex;flex-direction:column;gap:18px">
+  <div class="card"><div class="h3">This week's goal <em>32 / 40 items</em></div><div class="bar" style="margin:14px 0 8px;height:10px"><i style="width:80%"></i></div><div class="mut">8 more to hit your weekly target · 2 days left</div></div>
+  <div class="card"><div class="h3">My clients <em>This week</em></div><div style="margin-top:6px">
+   ${[['Acme Coffee','#1B8878',18,'Done'],['Northwind','#6b5bd2',9,'In progress'],['Bloom Studio','#C65D4C',5,'Done']].map(([n,c,v,s])=>`<div class="row"><div class="ico" style="background:${c}22;color:${c};font-weight:700">${n[0]}</div><div style="flex:1"><b>${n}</b><div class="bar" style="margin-top:6px"><i style="width:${v*5}%;background:${c}"></i></div></div><b>${v}</b></div>`).join('')}</div></div>
+  <div class="card"><div class="h3">Recent logs <em>View all →</em></div><div style="margin-top:6px">
+   ${[['🎬','Acme Coffee','3 videos · today','Done',''],['🖼','Northwind','2 carousels · today','In progress','w'],['✍️','Bloom Studio','4 text posts · yesterday','Done',''],['🧩','Other work','Team meeting · Mon','Other','g']].map(([i,n,d,b,c])=>`<div class="row"><div class="ico">${i}</div><div style="flex:1"><b>${n}</b><div class="mut">${d}</div></div><span class="badge ${c}">${b}</span></div>`).join('')}</div></div>
+ </div></div>`);
+
+S.log=()=>shell('log','Workspace / <b>Log today\'s work</b>',`
+<div class="ph"><div><h1>Log today's work</h1><div class="subt">Wednesday, November 25 · auto-saved as draft 2 min ago</div></div><div class="seg"><span class="on">Today</span><span>Yesterday</span><span>Pick date…</span></div></div>
+<div style="display:grid;grid-template-columns:1.7fr 1fr;gap:18px">
+ <div style="display:flex;flex-direction:column;gap:16px">
+  <div class="card"><div class="h3" style="margin-bottom:12px">What kind of day was this?</div>
+   <div style="display:flex;gap:12px"><div class="choice on"><div class="ico" style="background:#fff">🎬</div><div><b>Client production</b><div class="mut">Videos, carousels, text posts</div></div><div class="r"></div></div>
+   <div class="choice"><div class="ico">🧩</div><div><b>Other work</b><div class="mut">Meetings, admin, research</div></div><div class="r"></div></div></div>
+   <div class="field" style="margin-top:16px"><label>Client</label><div style="display:flex;gap:8px">${['Acme Coffee','Northwind','Bloom Studio','+ Other'].map((c,i)=>`<span class="pill" style="${i===0?'border-color:var(--accent);background:var(--soft);color:var(--deep);font-weight:600':''}">${i<3?`<span class="dot" style="background:${['#1B8878','#6b5bd2','#C65D4C'][i]}"></span>`:''}${c}</span>`).join('')}</div></div>
+  </div>
+  <div class="card"><div class="h3">Production <em>Tap + / – to count · set status per item</em></div><div style="margin-top:6px">
+   ${[['🎬','Videos edited',3,1],['🔁','Videos re-edited',1,0],['🖼','Carousels edited',2,1],['🔁','Carousels re-edited',0,0],['✍️','Text posts prepared',0,0],['🔁','Text posts re-edited',0,0]].map(([i,l,v,s])=>`<div class="prodrow"><div class="ico">${i}</div><div><b style="${v?'':'color:var(--muted);font-weight:500'}">${l}</b></div>
+   <div class="seg" style="${v?'':'opacity:.4'}"><span class="${s?'on':''}">✓ Completed</span><span class="${v&&!s?'on':''}">⏳ In progress</span></div>
+   <div class="counter"><span>–</span><b style="${v?'':'color:var(--faint)'}">${v}</b><span>＋</span></div></div>`).join('')}</div></div>
+ </div>
+ <div style="display:flex;flex-direction:column;gap:16px">
+  <div class="card"><div class="h3" style="margin-bottom:12px">Notes</div><div class="inp ph2" style="height:120px;align-items:flex-start">Anything the team should know? e.g. "Waiting on raw footage for reel #4"</div></div>
+  <div class="card" style="background:var(--soft);border-color:var(--soft2)"><div class="h3">Today so far</div>
+   <div style="display:flex;align-items:baseline;gap:8px;margin:10px 0"><b style="font-size:40px;letter-spacing:-.03em;color:var(--deep)">6</b><span class="mut">items · Acme Coffee</span></div>
+   <div class="mut" style="line-height:1.8">🎬 4 videos &nbsp;·&nbsp; 🖼 2 carousels<br>✓ 5 completed &nbsp;·&nbsp; ⏳ 1 in progress</div></div>
+  <div class="card"><div class="h3">Already logged today <em>1 entry</em></div><div class="row" style="margin-top:6px"><div class="ico">🖼</div><div style="flex:1"><b>Northwind</b><div class="mut">2 carousels · 9:40 AM</div></div><span class="mut">Edit</span></div></div>
+ </div></div>`,{sticky:`<div class="sticky"><b>6 items</b><span class="mut">Acme Coffee · Wed, Nov 25</span><span class="badge w">Draft</span><div style="margin-left:auto;display:flex;gap:10px"><span class="btn sec">Save draft</span><span class="btn">Submit log ✓</span></div></div>`,filters:false});
+
+S.history=()=>{const rows=[['Nov 25','Wed','Acme Coffee','#1B8878',6,'In progress','w','Waiting on footage'],['Nov 25','Wed','Northwind','#6b5bd2',2,'Completed','',''],['Nov 24','Tue','Acme Coffee','#1B8878',8,'Completed','','Reels batch done'],['Nov 24','Tue','Other work','#95998F','—','Other','g','Team meeting'],['Nov 23','Mon','Bloom Studio','#C65D4C',4,'Completed','',''],['Nov 21','Fri','Northwind','#6b5bd2',5,'Completed','','Client approved v2'],['Nov 20','Thu','Acme Coffee','#1B8878',7,'Completed','',''],['Nov 19','Wed','Bloom Studio','#C65D4C',3,'In progress','w','Re-edit requested'],['Nov 18','Tue','Acme Coffee','#1B8878',6,'Completed','','']];
+return shell('history','Workspace / <b>History</b>',`
+<div class="ph"><div><h1>History</h1><div class="subt">Every log you've submitted</div></div><div style="display:flex;gap:8px"><span class="btn sec">⬇ Export CSV</span></div></div>
+<div class="grid" style="grid-template-columns:repeat(4,1fr)">${kpi('Logs this month','38','▲ 6 vs October')}${kpi('Items produced','214','▲ 9%')}${kpi('Completion rate','91%','▲ 3 pts')}${kpi('Avg / day','10.7','— steady',true)}</div>
+<div style="display:flex;gap:8px;align-items:center"><div class="seg"><span class="on">All</span><span>Client work</span><span>Other work</span><span>In progress</span></div><span class="pill" style="margin-left:auto">Client: All ▾</span><span class="pill">📅 Nov 1 – Nov 30 ▾</span></div>
+<div class="card p0"><table><tr><th>Date</th><th>Client</th><th>Breakdown</th><th class="num">Total</th><th>Status</th><th>Notes</th><th></th></tr>
+${rows.map(([d,dy,c,col,t,s,b,n])=>`<tr><td><b>${d}</b> <span class="mut">${dy}</span></td><td><span style="display:inline-flex;align-items:center;gap:8px"><span class="dot" style="background:${col}"></span>${c}</span></td>
+<td>${t==='—'?'<span class="mut">—</span>':`<span style="display:inline-flex;gap:6px">${['🎬 '+Math.ceil(t/2),'🖼 '+Math.floor(t/3),'✍️ '+(t-Math.ceil(t/2)-Math.floor(t/3))].map(x=>`<span class="badge g">${x}</span>`).join('')}</span>`}</td>
+<td class="num"><b>${t}</b></td><td><span class="badge ${b}">${s}</span></td><td class="mut">${n||'—'}</td><td class="mut">⋯</td></tr>`).join('')}</table></div>`)};
+
+const growthHead=(k,title,sub,actions='')=>`<div class="ph"><div><h1>${title}</h1><div class="subt">${sub}</div></div>${actions}</div>
+<div class="tabs">${growthSubs.map(([kk,l])=>`<div class="tab ${kk===k?'on':''}">${l}</div>`).join('')}</div>`;
+
+S.overview=()=>shell('overview','Growth / <b>Overview</b>',`${growthHead('overview','Growth overview','Acme Coffee · 2026 · all platforms','<span class="btn sec">Share report ↗</span>')}
+<div class="grid" style="grid-template-columns:repeat(5,1fr)">${kpi('Total views','1.24M','▲ 18% vs 2025',true,[4,8,6,12,14,18,24])}${kpi('New audience','+8,420','▲ 22%',true,[6,6,10,9,14,18,20])}${kpi('Peak audience','42.1k','Instagram',true)}${kpi('Views / follower','29.4','▲ 2.1',true)}${kpi('Best week','Oct 13','186k views',true)}</div>
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:18px">
+ <div class="card"><div class="h3">Views & new audience <span class="legend"><span><i style="background:#177566"></i>Views</span><span><i style="background:#D2920F"></i>New audience</span></span></div>${lineChart(760,230,[['#177566',[.3,.35,.32,.45,.5,.48,.6,.66,.62,.78,.85],true],['#D2920F',[.15,.18,.2,.22,.3,.28,.34,.4,.38,.45,.5]]],months.slice(0,11))}</div>
+ <div class="card"><div class="h3">Share of views</div>
+  <div style="display:flex;justify-content:center;margin:14px 0"><svg width="150" height="150" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.9" fill="none" stroke="#177566" stroke-width="6" stroke-dasharray="46 54" stroke-dashoffset="25"/><circle cx="21" cy="21" r="15.9" fill="none" stroke="#6b5bd2" stroke-width="6" stroke-dasharray="28 72" stroke-dashoffset="79"/><circle cx="21" cy="21" r="15.9" fill="none" stroke="#D2920F" stroke-width="6" stroke-dasharray="16 84" stroke-dashoffset="51"/><circle cx="21" cy="21" r="15.9" fill="none" stroke="#C65D4C" stroke-width="6" stroke-dasharray="10 90" stroke-dashoffset="35"/><text x="21" y="21" text-anchor="middle" font-size="6" font-weight="700" fill="#1C1E1C">1.24M</text><text x="21" y="27" text-anchor="middle" font-size="3" fill="#727872">views</text></svg></div>
+  ${[['Instagram','#177566','46%','571k'],['TikTok','#6b5bd2','28%','347k'],['YouTube','#D2920F','16%','198k'],['Facebook','#C65D4C','10%','124k']].map(([n,c,p,v])=>`<div class="row" style="padding:8px 0"><span class="dot" style="background:${c}"></span><span style="flex:1">${n}</span><span class="mut">${v}</span><b style="width:40px;text-align:right">${p}</b></div>`).join('')}</div>
+</div>`);
+
+S.input=()=>shell('input','Growth / <b>Weekly input</b>',`${growthHead('input','Weekly growth input','Enter this week\'s numbers per platform','<span class="btn sec">⬆ Import monthly report</span>')}
+<div style="display:grid;grid-template-columns:1.7fr 1fr;gap:18px">
+ <div class="card p0"><div style="padding:18px 20px;display:flex;gap:12px;align-items:flex-end;border-bottom:1px solid var(--border)">
+  <div class="field" style="flex:1"><label>Client</label><div class="inp"><span>Acme Coffee</span>▾</div></div>
+  <div class="field" style="flex:1"><label>Week starting (Mon)</label><div class="inp"><span>‹ &nbsp;Nov 23, 2026&nbsp; ›</span>📅</div></div>
+  <span class="badge w" style="margin-bottom:10px">Not submitted yet</span></div>
+  <table><tr><th>Platform</th><th class="num">Total audience</th><th class="num">New audience</th><th class="num">Views</th><th class="num">vs last week</th></tr>
+  ${[['Instagram','#177566','42,108','+612','48,920','▲ 8%'],['TikTok','#6b5bd2','28,450','+904','61,300','▲ 21%'],['YouTube','#D2920F','9,812','+88','12,040','▼ 3%'],['Facebook','#C65D4C','','','','']].map(([n,c,a,na,v,d])=>`<tr><td><span style="display:inline-flex;gap:10px;align-items:center"><span class="ico" style="width:28px;height:28px;background:${c}22;color:${c};font-weight:700;font-size:12px">${n[0]}</span><b>${n}</b></span></td>
+  ${[a,na,v].map(x=>`<td class="num"><span class="inp" style="display:inline-block;width:120px;text-align:right;padding:7px 10px;${x?'':'color:var(--faint);border-style:dashed'}">${x||'0'}</span></td>`).join('')}<td class="num"><span class="${d.includes('▼')?'down':'up'}">${d||'<span class=mut>—</span>'}</span></td></tr>`).join('')}
+  <tr style="background:#FAFBF8"><td><b>Total</b></td><td class="num"><b>80,370</b></td><td class="num"><b>+1,604</b></td><td class="num"><b>122,260</b></td><td class="num up">▲ 12%</td></tr></table>
+  <div style="padding:14px 20px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--border)"><span class="btn sec">Clear</span><span class="btn">Save week ✓</span></div></div>
+ <div class="card"><div class="h3">Recent entries <em>Acme Coffee</em></div><div style="margin-top:6px">
+  ${['Nov 16','Nov 9','Nov 2','Oct 26','Oct 19'].map((w,i)=>`<div class="row"><div class="ico">📊</div><div style="flex:1"><b>Week of ${w}</b><div class="mut">${4-(i>2?1:0)} platforms · by Ana</div></div><div style="text-align:right"><b>${[109,98,104,91,88][i]}k</b><div class="mut">views</div></div></div>`).join('')}</div></div>
+</div>`);
+
+S.monthly=()=>shell('monthly','Growth / <b>Monthly summary</b>',`${growthHead('monthly','Monthly summary','Acme Coffee · 2026 compared with 2025','<div class="seg"><span>2024</span><span>2025</span><span class="on">2026</span></div>')}
+<div class="grid" style="grid-template-columns:repeat(4,1fr)">${['Q1','Q2','Q3','Q4'].map((q,i)=>`<div class="card kpi"><small>${q} 2026</small><b>${[212,268,341,419][i]}k</b><span class="up">▲ ${[9,14,21,26][i]}% vs ${q} 2025</span><div class="mut" style="margin-top:4px">+${[1.4,1.9,2.3,2.8][i]}k new audience</div></div>`).join('')}</div>
+<div class="card"><div class="h3">Monthly views <span class="legend"><span><i style="background:#177566"></i>2026</span><span><i style="background:#B9BCB4"></i>2025</span></span></div>${barChart(1100,190,months.slice(0,11).map((m,i)=>[.25+i*.06+rnd()*.08,.2+i*.045+rnd()*.06]),['#177566','#DBDDD7'],months.slice(0,11))}</div>
+<div class="card p0"><table><tr><th>Month</th><th class="num">2026 views</th><th class="num">2025 views</th><th class="num">Change</th><th class="num">2026 new audience</th><th class="num">2025 new audience</th></tr>
+${['Sep','Oct','Nov'].map((m,i)=>`<tr><td><b>${m}</b></td><td class="num">${[118,141,152][i]}k</td><td class="num mut">${[96,108,119][i]}k</td><td class="num up">▲ ${[23,31,28][i]}%</td><td class="num">+${[812,940,1020][i]}</td><td class="num mut">+${[640,700,760][i]}</td></tr>`).join('')}</table></div>`);
+
+S.compare=()=>shell('compare','Growth / <b>Compare platforms</b>',`${growthHead('compare','Platform vs platform','Head-to-head for Acme Coffee in 2026')}
+<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:stretch">
+ ${[['Instagram','#177566','571k','+3,912','10.7','14.6'],null,['TikTok','#6b5bd2','347k','+4,108','11.3','8.4']].map(p=>p?`<div class="card" style="border-top:4px solid ${p[1]}"><div class="h3"><span style="display:flex;gap:10px;align-items:center"><span class="ico" style="background:${p[1]}22;color:${p[1]};font-weight:700">${p[0][0]}</span>${p[0]} ▾</span></div>
+ <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-top:16px;gap:10px">${[['Views',p[2]],['Followers gained',p[3]],['Followers / day',p[4]],['Views / follower',p[5]]].map(([l,v])=>`<div><div class="mut">${l}</div><b style="font-size:20px">${v}</b></div>`).join('')}</div></div>`:`<div style="display:grid;place-items:center"><div style="width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid var(--border);display:grid;place-items:center;font-weight:700;color:var(--muted)">VS</div></div>`).join('')}
+</div>
+<div class="card"><div class="h3">Monthly views <span class="legend"><span><i style="background:#177566"></i>Instagram</span><span><i style="background:#6b5bd2"></i>TikTok</span></span></div>${lineChart(1100,220,[['#177566',[.3,.34,.36,.42,.45,.5,.52,.58,.6,.66,.7],true],['#6b5bd2',[.1,.14,.2,.24,.3,.38,.42,.5,.55,.64,.74],true]],months.slice(0,11))}</div>
+<div class="card" style="background:var(--soft);border-color:var(--soft2);display:flex;gap:14px;align-items:center"><div class="ico" style="background:#fff">💡</div><div><b>TikTok is catching up fast.</b> <span class="mut">It gained more followers than Instagram in 6 of the last 8 months, even with 39% fewer views.</span></div></div>`);
+
+S.impact=()=>shell('impact','Growth / <b>Content impact</b>',`${growthHead('impact','Content impact','Does more output mean more views? Week by week for Acme Coffee')}
+<div class="grid" style="grid-template-columns:repeat(3,1fr)">${kpi('Best performing type','Videos','≈ 4.2k views per video')}${kpi('Correlation (items ↔ views)','Strong · 0.71','▲ more output, more reach')}${kpi('Most productive week','Oct 13','14 items → 186k views')}</div>
+<div class="card"><div class="h3">Content output vs views <span class="legend"><span><i style="background:#177566"></i>Videos</span><span><i style="background:#7BC2B4"></i>Carousels</span><span><i style="background:#D2920F"></i>Text</span><span><i style="background:#6b5bd2;border-radius:50%"></i>Views</span></span></div>
+<div style="position:relative">${barChart(1100,230,Array.from({length:12},(_,i)=>[.2+rnd()*.4,.1+rnd()*.3,.05+rnd()*.2]),['#177566','#7BC2B4','#D2920F'],Array.from({length:12},(_,i)=>'W'+(36+i)))}
+<svg viewBox="0 0 1100 254" width="100%" style="position:absolute;inset:0"><polyline fill="none" stroke="#6b5bd2" stroke-width="2.5" stroke-dasharray="0" points="${Array.from({length:12},(_,i)=>`${i*1100/12+1100/24},${200-i*12-rnd()*40}`).join(' ')}"/></svg></div></div>
+<div class="card p0"><table><tr><th>Week</th><th class="num">Videos</th><th class="num">Carousels</th><th class="num">Text</th><th class="num">Total items</th><th class="num">Views</th><th class="num">New audience</th></tr>
+${['Nov 16','Nov 9','Nov 2'].map((w,i)=>`<tr><td><b>${w}</b></td><td class="num">${[6,5,7][i]}</td><td class="num">${[3,4,2][i]}</td><td class="num">${[2,2,1][i]}</td><td class="num"><b>${[11,11,10][i]}</b></td><td class="num">${[109,98,104][i]}k</td><td class="num up">+${[402,377,390][i]}</td></tr>`).join('')}</table></div>`);
+
+S.reports=()=>shell('reports','Growth / <b>Reports</b>',`${growthHead('reports','Growth reports','Build a report to download or share with your client')}
+<div style="display:grid;grid-template-columns:1fr 1.6fr;gap:18px">
+ <div class="card" style="display:flex;flex-direction:column;gap:14px"><div class="h3">Report settings</div>
+  <div class="field"><label>Client</label><div class="inp"><span>Acme Coffee</span>▾</div></div>
+  <div class="field"><label>Date range</label><div class="seg" style="width:100%"><span>Last 4 wks</span><span class="on">This quarter</span><span>YTD</span><span>Custom</span></div></div>
+  <div class="field"><label>Include</label>${['Summary KPIs','Views by platform','Weekly table','Content output'].map((x,i)=>`<div style="display:flex;gap:10px;align-items:center;padding:6px 0"><span style="width:18px;height:18px;border-radius:5px;background:${i<3?'var(--accent)':'#fff'};border:1.5px solid ${i<3?'var(--accent)':'var(--border)'};color:#fff;font-size:12px;display:grid;place-items:center">${i<3?'✓':''}</span>${x}</div>`).join('')}</div>
+  <div style="display:flex;gap:10px;margin-top:auto"><span class="btn" style="flex:1;justify-content:center">⬇ Download PDF</span><span class="btn sec">🔗 Share link</span></div></div>
+ <div class="card" style="background:#FAFBF8"><div class="h3">Preview <em>Page 1 of 3</em></div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:10px;margin-top:14px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.06)">
+   <div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;gap:10px;align-items:center"><div class="logo">P</div><div><b>Acme Coffee</b><div class="mut">Growth report · Q4 2026</div></div></div><span class="mut">Oct 1 – Nov 25</span></div>
+   <div class="grid" style="grid-template-columns:repeat(3,1fr);margin:18px 0;gap:10px">${[['Views','419k','▲ 26%'],['New audience','+2,840','▲ 31%'],['Posts delivered','64','▲ 12%']].map(([l,v,d])=>`<div style="background:var(--chip);border-radius:10px;padding:12px"><div class="mut">${l}</div><b style="font-size:20px">${v}</b> <span class="up">${d}</span></div>`).join('')}</div>
+   ${lineChart(640,130,[['#177566',[.3,.4,.38,.5,.56,.62,.7,.8],true]],['W40','W41','W42','W43','W44','W45','W46','W47'])}</div></div>
+</div>`);
+
+S.activity=()=>shell('activity','Growth / <b>Activity log</b>',`${growthHead('activity','Activity log','Who changed what in growth data')}
+<div style="display:flex;gap:8px"><div class="seg"><span class="on">All</span><span>Created</span><span>Updated</span><span>Deleted</span></div><span class="pill" style="margin-left:auto">Client: All ▾</span></div>
+<div class="card"><div class="mut" style="font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px">Today</div>
+${[['＋','var(--soft2)','var(--deep)','<b>Ana</b> added week of Nov 23 for <b>Acme Coffee</b>','3 platforms · 122k views','10:42 AM'],['✎','var(--amberSoft)','var(--amber)','<b>Ana</b> updated TikTok views for <b>Northwind</b>','48,200 → 51,300','9:15 AM']].map(r=>tl(r)).join('')}
+<div class="mut" style="font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;margin:14px 0 4px">Yesterday</div>
+${[['⬆','#E8E4FA','#6b5bd2','<b>Joel</b> imported a monthly report for <b>Bloom Studio</b>','October 2026 · 4 platforms','4:30 PM'],['＋','var(--soft2)','var(--deep)','<b>Ana</b> added week of Nov 16 for <b>Acme Coffee</b>','4 platforms · 109k views','11:02 AM'],['🗑','var(--claySoft)','#B14B3C','<b>Kim</b> deleted a duplicate entry for <b>Northwind</b>','Week of Nov 9 · Facebook','9:48 AM']].map(r=>tl(r)).join('')}</div>`);
+function tl([i,bg,c,t,d,time]){return `<div class="tl"><div class="dot2" style="background:${bg};color:${c}">${i}</div><div style="flex:1"><div>${t}</div><div class="mut" style="margin-top:2px">${d}</div></div><span class="mut">${time}</span></div>`}
+
+S.settings=()=>shell('settings','Workspace / <b>Settings</b>',`
+<div class="ph"><div><h1>Settings</h1><div class="subt">Manage your profile and security</div></div></div>
+<div style="display:grid;grid-template-columns:220px 1fr;gap:24px">
+ <div style="display:flex;flex-direction:column;gap:2px">${['Profile','Password & security','Notifications','Appearance'].map((x,i)=>`<div class="nav ${i===0?'on':''}">${x}</div>`).join('')}</div>
+ <div style="display:flex;flex-direction:column;gap:16px;max-width:720px">
+  <div class="card"><div class="h3">Profile</div><div style="display:flex;gap:18px;align-items:center;margin:16px 0"><div class="av" style="width:64px;height:64px;font-size:20px;background:#1B8878">AM</div><div><span class="btn sec">Change photo</span><div class="mut" style="margin-top:6px">JPG or PNG, up to 2 MB</div></div></div>
+   <div class="grid" style="grid-template-columns:1fr 1fr"><div class="field"><label>Full name</label><div class="inp">Ana Mendoza</div></div><div class="field"><label>Email</label><div class="inp" style="background:#FAFBF8;color:var(--muted)">ana@partnerlee.com 🔒</div></div>
+   <div class="field"><label>Role</label><div class="inp" style="background:#FAFBF8;color:var(--muted)">Content Assistant</div></div><div class="field"><label>Assigned clients</label><div style="display:flex;gap:6px;padding-top:6px"><span class="badge">Acme Coffee</span><span class="badge">Northwind</span><span class="badge">Bloom Studio</span></div></div></div>
+   <div style="display:flex;justify-content:flex-end;margin-top:16px"><span class="btn">Save changes</span></div></div>
+  <div class="card"><div class="h3">Password <span class="badge w">Last changed 94 days ago</span></div><div class="grid" style="grid-template-columns:1fr 1fr;margin-top:14px"><div class="field"><label>New password</label><div class="inp ph2">••••••••</div></div><div class="field"><label>Confirm password</label><div class="inp ph2">••••••••</div></div></div>
+   <div style="display:flex;justify-content:flex-end;margin-top:16px"><span class="btn sec">Update password</span></div></div>
+ </div></div>`,{filters:false});
+
+S.mobile=()=>`<div class="phones">
+<div class="caption"><h2>Mobile</h2><p>A bottom tab bar replaces the full-screen menu. The raised <b>＋</b> in the middle opens Log today's work from any screen.</p><p>Logging uses big tap targets: one row per content type with – / + buttons, and a Submit bar at the bottom.</p></div>
+<div class="phone"><div class="ptop"><div class="logo" style="width:28px;height:28px;font-size:13px">P</div><b>Home</b><div style="margin-left:auto" class="av">AM</div></div>
+ <div class="pbody"><div><b style="font-size:20px">Good morning, Ana</b><div class="mut">Wed, Nov 25</div></div>
+ <div class="hero" style="padding:18px;flex-direction:column;align-items:stretch;gap:14px"><div><small>Today</small><div class="big" style="font-size:26px">5 items logged</div><div style="opacity:.85;font-size:13px">🔥 12 day streak</div></div><div class="herobtn" style="text-align:center">Continue log →</div></div>
+ <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">${[['Videos','48','▲ 12%'],['Carousels','21','▲ 4%'],['Text posts','14','▼ 6%'],['Re-edits','9','▼ 3']].map(([l,v,d],i)=>`<div class="card kpi" style="padding:14px"><small>${l}</small><b style="font-size:22px">${v}</b><span class="${i===2?'down':'up'}">${d}</span></div>`).join('')}</div>
+ <div class="card" style="padding:14px"><div class="h3">Recent <em>View all</em></div><div class="row"><div class="ico">🎬</div><div style="flex:1"><b>Acme Coffee</b><div class="mut">3 videos</div></div><span class="badge">Done</span></div></div></div>
+ <div class="tabbar"><div class="on">${svg('home',22)}Home</div><div>${svg('hist',22)}History</div><div><span class="plus">＋</span></div><div>${svg('grow',22)}Growth</div><div>${svg('menu',22)}More</div></div></div>
+<div class="phone"><div class="ptop"><span style="font-size:18px">‹</span><b>Log today's work</b><span class="badge w" style="margin-left:auto">Draft</span></div>
+ <div class="pbody" style="gap:10px"><div style="display:flex;gap:6px;overflow:hidden">${['Acme Coffee','Northwind','Bloom'].map((c,i)=>`<span class="pill" style="${i===0?'border-color:var(--accent);background:var(--soft);color:var(--deep);font-weight:600':''}">${c}</span>`).join('')}</div>
+ <div class="card" style="padding:4px 14px">${[['🎬','Videos edited',3,'✓ Completed'],['🔁','Videos re-edited',1,'⏳ In progress'],['🖼','Carousels edited',2,'✓ Completed'],['🔁','Carousels re-edited',0],['✍️','Text posts',0],['🔁','Text re-edited',0]].map(([i,l,v,st])=>`<div class="prodrow" style="grid-template-columns:34px 1fr auto;gap:10px;padding:10px 0"><div class="ico">${i}</div><div><b style="font-size:13px;${v?'':'color:var(--muted);font-weight:500'}">${l}</b>${v?`<div class="mut" style="font-size:11px">${st} ▾</div>`:''}</div><div class="counter"><span style="width:34px">–</span><b style="width:34px">${v}</b><span style="width:34px">＋</span></div></div>`).join('')}</div>
+ <div class="inp ph2" style="font-size:13px">Add a note…</div></div>
+ <div class="sticky" style="padding:12px 16px 26px"><div><b>6 items</b><div class="mut">Acme Coffee</div></div><span class="btn" style="margin-left:auto">Submit ✓</span></div></div>
+</div>`;
+
+const k=location.hash.slice(1)||'home';document.getElementById('root').innerHTML=S[k]();
+document.documentElement.style.setProperty('--h0','#EDEFEA');document.documentElement.style.setProperty('--h1','#B5DDD3');document.documentElement.style.setProperty('--h2','#5FB3A1');document.documentElement.style.setProperty('--h3','#177566');
+const h=document.getElementById('heat');if(h)for(let i=0;i<30*7;i++){const v=rnd();const s=document.createElement('span');s.style.background=`var(--h${v<.28?0:v<.55?1:v<.8?2:3})`;h.appendChild(s)}
+</script></body></html>

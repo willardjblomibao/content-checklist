@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { format, parseISO, getISOWeek, startOfISOWeek } from 'date-fns'
+import { format, parseISO, getISOWeek, startOfISOWeek, subDays, subMonths } from 'date-fns'
 import { MONTH_NAMES } from '../types/database'
 
 export function cn(...inputs: ClassValue[]) {
@@ -391,4 +391,29 @@ export function parseMonthlyWideReport(
     monthsFound,
     monthLabelsSeen,
   }
+}
+/**
+ * The comparison window for a dashboard range: the same span, one period
+ * earlier. "Today" compares with yesterday, "This week" (Mon→today) with the
+ * same weekdays last week, "This month" (1st→today) with the same days last
+ * month (date-fns clamps e.g. Mar 31 → Feb 28).
+ */
+export function previousPeriod(range: 'today' | 'week' | 'month', from: string, to: string): { from: string; to: string } {
+  const f = new Date(from + 'T00:00:00')
+  const t = new Date(to + 'T00:00:00')
+  const shift = (d: Date) => (range === 'today' ? subDays(d, 1) : range === 'week' ? subDays(d, 7) : subMonths(d, 1))
+  return { from: format(shift(f), 'yyyy-MM-dd'), to: format(shift(t), 'yyyy-MM-dd') }
+}
+
+/** "12%" style change between two totals, or null when there's nothing to compare against. */
+export function percentChange(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? 0 : null
+  return Math.round(((current - previous) / previous) * 100)
+}
+
+export function greeting(date = new Date()): string {
+  const h = date.getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
 }

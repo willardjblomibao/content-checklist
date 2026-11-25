@@ -1,14 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, StickyNote } from 'lucide-react'
+import { StickyNote } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { usePresence } from '../contexts/PresenceContext'
 import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/KpiCards'
 import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap'
 import { OtherWorkPanel } from '../components/dashboard/OtherWorkPanel'
-import { Button, Card, EmptyState, PageSpinner } from '../components/ui/primitives'
-import { PRODUCTION_FIELDS, totalItems, logActivityCount, logClientLabel, type Profile, type ProductionLogWithRelations } from '../types/database'
-import { formatDate, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
+import { Card, EmptyState, PageSpinner, PageHeader, SectionTitle } from '../components/ui/primitives'
+import { TodayHero, chipsFor } from '../components/dashboard/TodayHero'
+import { PRODUCTION_FIELDS, logActivityCount, logClientLabel, type Profile, type ProductionLogWithRelations } from '../types/database'
+import { cn, formatDate, initials, previousPeriod, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
+
+function sumFields(logs: ProductionLogWithRelations[]) {
+  const t: Record<string, number> = {}
+  for (const f of PRODUCTION_FIELDS) t[f.countKey] = 0
+  for (const log of logs) {
+    for (const f of PRODUCTION_FIELDS) t[f.countKey] += (log as any)[f.countKey] ?? 0
+  }
+  return t
+}
+
+const AVATAR_COLORS = ['bg-pine-600', 'bg-violet-500', 'bg-clay-500', 'bg-amber-500', 'bg-pine-400', 'bg-coral-500']
 
 function rangeToDates(range: RangeKey): { from: string; to: string } {
   const to = todayISO()
@@ -19,14 +31,34 @@ function rangeToDates(range: RangeKey): { from: string; to: string } {
 
 export default function AdminDashboard() {
   const { onlineUserIds } = usePresence()
-  const [range, setRange] = useState<RangeKey>('today')
+  const [range, setRange] = useState<RangeKey>('week')
   const [logs, setLogs] = useState<ProductionLogWithRelations[]>([])
+  const [prevLogs, setPrevLogs] = useState<ProductionLogWithRelations[]>([])
+  const [todayLogs, setTodayLogs] = useState<ProductionLogWithRelations[]>([])
   const [team, setTeam] = useState<Profile[]>([])
   const [recentNotes, setRecentNotes] = useState<ProductionLogWithRelations[]>([])
   const [heatmapLogs, setHeatmapLogs] = useState<ProductionLogWithRelations[]>([])
   const [loading, setLoading] = useState(true)
 
   const { from, to } = rangeToDates(range)
+  const prev = previousPeriod(range, from, to)
+
+  useEffect(() => {
+    supabase
+      .from('production_logs')
+      .select('*, client:clients(id, name, status), profile:profiles(id, full_name, email)')
+      .eq('production_date', todayISO())
+      .then(({ data }) => setTodayLogs((data ?? []) as unknown as ProductionLogWithRelations[]))
+  }, [])
+
+  useEffect(() => {
+    supabase
+      .from('production_logs')
+      .select('*')
+      .gte('production_date', prev.from)
+      .lte('production_date', prev.to)
+      .then(({ data }) => setPrevLogs((data ?? []) as unknown as ProductionLogWithRelations[]))
+  }, [prev.from, prev.to])
 
   useEffect(() => {
     supabase
@@ -85,14 +117,26 @@ export default function AdminDashboard() {
       })
   }, [from, to])
 
-  const totals = useMemo(() => {
-    const t: Record<string, number> = {}
-    for (const f of PRODUCTION_FIELDS) t[f.countKey] = 0
-    for (const log of logs) {
-      for (const f of PRODUCTION_FIELDS) t[f.countKey] += (log as any)[f.countKey] ?? 0
-    }
-    return t
-  }, [logs])
+  const totals = useMemo(() => sumFields(logs), [logs])
+  const prevTotals = useMemo(() => sumFields(prevLogs), [prevLogs])
+  const todayTotals = useMemo(() => sumFields(todayLogs), [todayLogs])
+  const todayCount = Object.values(todayTotals).reduce((a, b) => a + b, 0)
+
+  // Per-assistant activity for today, most productive first; people who
+  // haven't logged anything yet sink to the bottom.
+  const teamToday = useMemo(() => {
+    const rows = team.map((member) => {
+      const mine = todayLogs.filter((l) => l.user_id === member.id)
+      const items = mine.reduce(
+        (sum, l) => sum + PRODUCTION_FIELDS.reduce((s, f) => s + ((l as any)[f.countKey] ?? 0), 0),
+        0
+      )
+      return { member, items, logged: mine.length > 0, otherOnly: mine.length > 0 && mine.every((l) => l.is_other_work) }
+    })
+    return rows.sort((a, b) => Number(b.logged) - Number(a.logged) || b.items - a.items)
+  }, [team, todayLogs])
+  const loggedToday = teamToday.filter((r) => r.logged).length
+  const maxToday = Math.max(1, ...teamToday.map((r) => r.items))
 
   const perAssistant = useMemo(() => {
     const rows = team.map((member) => {
@@ -112,49 +156,103 @@ export default function AdminDashboard() {
   const teamOtherWork = perAssistant.reduce((sum, r) => sum + r.otherWork, 0)
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-ink-900">Content Team</h1>
-          <p className="text-sm text-ink-500 mt-1">{formatDate(todayISO(), 'EEEE, MMMM d, yyyy')}</p>
-        </div>
-        <Link to="/daily-log">
-          <Button size="lg">
-            <Plus className="h-4 w-4" />
-            Add Daily Log
-          </Button>
-        </Link>
-      </div>
+    <div className="flex flex-col gap-7">
+      <PageHeader title="Content team" description={formatDate(todayISO(), 'EEEE, MMMM d, yyyy')} />
 
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-sm font-semibold text-ink-700">Team Production</h2>
-        <RangeSwitcher value={range} onChange={setRange} />
-      </div>
+      <TodayHero
+        eyebrow="Team today"
+        headline={`${todayCount} item${todayCount === 1 ? '' : 's'} logged`}
+        detail={
+          team.length === 0
+            ? 'Add assistants from the Team page to start tracking.'
+            : `${loggedToday} of ${team.length} assistant${team.length === 1 ? '' : 's'} have logged today · ${
+                team.filter((m) => onlineUserIds.has(m.id)).length
+              } online now`
+        }
+        chips={chipsFor(todayTotals)}
+        ctaLabel="Log today's work"
+        ctaIsPrimaryAction
+      />
+
+      <section>
+        <SectionTitle aside={<RangeSwitcher value={range} onChange={setRange} />} className="flex-wrap">
+          Team production
+        </SectionTitle>
+        {!loading && <KpiCards totals={totals} previous={prevTotals} range={range} />}
+      </section>
 
       {loading ? (
         <PageSpinner />
       ) : (
         <>
-          <KpiCards totals={totals} />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <section className="lg:col-span-2 min-w-0">
+              <SectionTitle>Team activity</SectionTitle>
+              <Card>
+                <div className="p-5 overflow-x-auto">
+                  <ContributionHeatmap countsByDate={heatmapCounts} label="team items" />
+                </div>
+              </Card>
+            </section>
 
-          <div>
-            <h2 className="text-sm font-semibold text-ink-700 mb-3">Team Other Work</h2>
+            <section className="min-w-0">
+              <SectionTitle aside={`${loggedToday} of ${team.length} logged`}>Team today</SectionTitle>
+              <Card className="overflow-hidden">
+                {teamToday.length === 0 ? (
+                  <EmptyState title="No team members yet" description="Add assistants from the Team page." />
+                ) : (
+                  <div className="divide-y divide-ink-100">
+                    {teamToday.map(({ member, items, logged, otherOnly }, i) => (
+                      <div key={member.id} className="flex items-center gap-3 px-4 py-3">
+                        <span className="relative shrink-0">
+                          <span
+                            className={cn(
+                              'h-8 w-8 rounded-full text-white flex items-center justify-center text-xs font-semibold',
+                              logged ? AVATAR_COLORS[i % AVATAR_COLORS.length] : 'bg-ink-300'
+                            )}
+                          >
+                            {initials(member.full_name)}
+                          </span>
+                          <span
+                            className={cn(
+                              'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white',
+                              onlineUserIds.has(member.id) ? 'bg-pine-500' : 'bg-ink-200'
+                            )}
+                            title={onlineUserIds.has(member.id) ? 'Online' : 'Offline'}
+                          />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-ink-900 truncate">{member.full_name}</p>
+                          {logged && !otherOnly ? (
+                            <div className="h-1.5 rounded-full bg-ink-100 mt-1.5 overflow-hidden">
+                              <div className="h-full rounded-full bg-pine-500" style={{ width: `${(items / maxToday) * 100}%` }} />
+                            </div>
+                          ) : (
+                            <p className="text-xs text-ink-500 mt-0.5">{otherOnly ? 'Other work only' : 'Not logged yet'}</p>
+                          )}
+                        </div>
+                        {logged ? (
+                          <span className="text-sm font-bold text-ink-900 tabular-nums">{items}</span>
+                        ) : (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-600">Pending</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </section>
+          </div>
+
+          <section>
+            <SectionTitle>Team other work</SectionTitle>
             <OtherWorkPanel logs={logs} mode="team" />
-          </div>
-
-          <div>
-            <h2 className="text-sm font-semibold text-ink-700 mb-3">Team Activity</h2>
-            <Card>
-              <div className="p-5">
-                <ContributionHeatmap countsByDate={heatmapCounts} label="team items" />
-              </div>
-            </Card>
-          </div>
+          </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <h2 className="text-sm font-semibold text-ink-700 mb-3 flex items-center gap-2">
-                Individual Performance
+              <h2 className="text-[15px] font-semibold text-ink-900 mb-3 flex items-center gap-2">
+                Individual performance
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-pine-700 bg-pine-50 px-2 py-0.5 rounded-full">
                   <span className="h-1.5 w-1.5 rounded-full bg-pine-500" />
                   {team.filter((m) => onlineUserIds.has(m.id)).length} online
@@ -170,7 +268,7 @@ export default function AdminDashboard() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                        <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                           <th className="px-5 py-3">Assistant</th>
                           {PRODUCTION_FIELDS.map((f) => (
                             <th key={f.countKey} className="px-3 py-3 text-right whitespace-nowrap">
@@ -223,7 +321,7 @@ export default function AdminDashboard() {
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold text-ink-700 mb-3">Recent Notes</h2>
+              <SectionTitle>Recent notes</SectionTitle>
               <Card className="overflow-hidden">
                 {recentNotes.length === 0 ? (
                   <EmptyState

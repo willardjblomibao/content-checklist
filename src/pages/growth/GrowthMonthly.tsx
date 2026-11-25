@@ -103,7 +103,7 @@ export default function GrowthMonthly() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-ink-900">Monthly Summary</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Monthly Summary</h1>
           <p className="text-sm text-ink-500 mt-1">
             {selectedClientName ? `Month, quarter and year-over-year views for ${selectedClientName}` : 'Month, quarter and year-over-year growth'}
           </p>
@@ -183,7 +183,7 @@ export default function GrowthMonthly() {
           </div>
 
           <Card className="p-5">
-            <h2 className="text-sm font-semibold text-ink-800 mb-4">
+            <h2 className="text-[15px] font-semibold text-ink-900 mb-4">
               Monthly Views {showCompare ? `— ${yearLabel} vs ${compareYear}` : `— ${yearLabel}`}
             </h2>
             <div className="h-72">
@@ -203,12 +203,12 @@ export default function GrowthMonthly() {
 
           <Card className="overflow-hidden">
             <div className="px-5 py-4 border-b border-ink-100">
-              <h2 className="text-sm font-semibold text-ink-800">Quarterly Rollup</h2>
+              <h2 className="text-[15px] font-semibold text-ink-900">Quarterly Rollup</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                  <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                     <th className="px-5 py-3">Quarter</th>
                     <th className="px-3 py-3 text-right">{yearLabel} Views</th>
                     {showCompare && <th className="px-3 py-3 text-right">{compareYear} Views</th>}
@@ -238,12 +238,12 @@ export default function GrowthMonthly() {
 
           <Card className="overflow-hidden">
             <div className="px-5 py-4 border-b border-ink-100">
-              <h2 className="text-sm font-semibold text-ink-800">Monthly Breakdown</h2>
+              <h2 className="text-[15px] font-semibold text-ink-900">Monthly Breakdown</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                  <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                     <th className="px-5 py-3">Month</th>
                     <th className="px-3 py-3 text-right">{yearLabel} Views</th>
                     {showCompare && <th className="px-3 py-3 text-right">{compareYear} Views</th>}

@@ -253,11 +253,11 @@ export default function Reports() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-ink-900">Reports</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Reports</h1>
           <p className="text-sm text-ink-500 mt-1">Production breakdowns for the selected period.</p>
         </div>
         <div className="flex gap-2">
-          <label className="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-medium rounded-md border border-ink-200 bg-white text-ink-800 hover:bg-ink-50 cursor-pointer">
+          <label className="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-semibold rounded-lg border border-ink-200 bg-white text-ink-800 hover:bg-ink-50 cursor-pointer">
             <input
               type="file"
               accept=".csv"

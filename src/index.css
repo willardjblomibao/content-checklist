@@ -8,6 +8,16 @@
   }
   body {
     @apply bg-canvas text-ink-900 font-sans;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  /* Hide number-input spinners; the Daily Log has its own – / + buttons. */
+  input[type='number'].no-spin::-webkit-outer-spin-button,
+  input[type='number'].no-spin::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'].no-spin {
+    -moz-appearance: textfield;
   }
   :focus-visible {
     @apply outline-none ring-2 ring-pine-500 ring-offset-2 ring-offset-canvas;
@@ -21,6 +31,15 @@
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
     @apply bg-ink-200 rounded-full;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 
   /* Brand wordmark: Fredoka, green fill, white outline. Used in the

@@ -1,11 +1,27 @@
-import { FormEvent, useEffect, useState } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { FormEvent, useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import { format, subDays } from 'date-fns'
+import {
+  Briefcase,
+  CalendarDays,
+  Check,
+  Clapperboard,
+  Clock,
+  FileText,
+  GalleryHorizontal,
+  Minus,
+  Plus,
+  Repeat,
+  Video,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { Button, Card, CardContent, CardHeader, Field, Input, Select, Textarea, PageSpinner } from '../components/ui/primitives'
-import { PRODUCTION_FIELDS, totalItems, type Client, type ProductionStatus } from '../types/database'
-import { dayOfWeek, todayISO, cn } from '../lib/utils'
+import { Button, Card, Field, Input, Select, Textarea, PageSpinner, PageHeader, Segmented } from '../components/ui/primitives'
+import { PRODUCTION_FIELDS, totalItems, logClientLabel, type Client, type ProductionLogWithRelations, type ProductionStatus } from '../types/database'
+import { formatDate, todayISO, cn } from '../lib/utils'
+
+const FIELD_ICONS = [Video, Repeat, GalleryHorizontal, Repeat, FileText, Repeat]
 
 type FormState = {
   production_date: string
@@ -63,6 +79,23 @@ export default function DailyLog() {
   const [saving, setSaving] = useState(false)
   const [ownerId, setOwnerId] = useState<string | null>(null)
   const [moving, setMoving] = useState(false)
+  const [sameDayLogs, setSameDayLogs] = useState<ProductionLogWithRelations[]>([])
+  const dateInputRef = useRef<HTMLInputElement>(null)
+
+  // Other entries already saved for this person on the selected date, so
+  // nobody double-logs the same work by accident.
+  useEffect(() => {
+    const uid = ownerId ?? profile?.id
+    if (!uid || loading) return
+    let q = supabase
+      .from('production_logs')
+      .select('*, client:clients(id, name, status)')
+      .eq('user_id', uid)
+      .eq('production_date', form.production_date)
+      .order('created_at', { ascending: true })
+    if (editId) q = q.neq('id', editId)
+    q.then(({ data }) => setSameDayLogs((data ?? []) as unknown as ProductionLogWithRelations[]))
+  }, [form.production_date, ownerId, profile?.id, editId, loading])
 
   useEffect(() => {
     supabase
@@ -211,199 +244,387 @@ export default function DailyLog() {
 
   if (loading) return <PageSpinner />
 
+  const selectedClientName =
+    form.client_id === OTHER_CLIENT
+      ? form.other_client_name.trim() || 'Other client'
+      : clients.find((c) => c.id === form.client_id)?.name
+  const inProgressCount = PRODUCTION_FIELDS.filter(
+    (f) => form[f.countKey] > 0 && form[f.statusKey] === 'in_progress'
+  ).length
+  const completedCount = PRODUCTION_FIELDS.filter(
+    (f) => form[f.countKey] > 0 && form[f.statusKey] === 'completed'
+  ).length
+  const today = todayISO()
+  const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd')
+  const dateChoice = form.production_date === today ? 'today' : form.production_date === yesterday ? 'yesterday' : 'other'
+
+  // Client picker: chips while the list is short, a dropdown once it isn't.
+  const clientOptions: { value: string; label: string }[] = [
+    ...(form.is_other_work ? [{ value: '', label: 'No client' }] : []),
+    ...clients.map((c) => ({ value: c.id, label: c.name })),
+    ...(form.is_other_work ? [{ value: OTHER_CLIENT, label: '+ Not in list' }] : []),
+  ]
+  const useChips = clients.length <= 8
+
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-xl font-semibold text-ink-900">{editId ? 'Edit Daily Log' : 'Add Daily Log'}</h1>
-      <p className="text-sm text-ink-500 mt-1">Log what you completed for a client — or other work — today.</p>
+    <form onSubmit={handleSubmit} className="flex flex-col flex-1">
+      <PageHeader
+        title={editId ? 'Edit log' : "Log today's work"}
+        description={`${formatDate(form.production_date, 'EEEE, MMMM d, yyyy')}${
+          editId ? '' : ' · log what you completed for a client, or other work'
+        }`}
+        actions={
+          <Segmented
+            ariaLabel="Date"
+            value={dateChoice}
+            onChange={(v) => {
+              if (v === 'today') updateField('production_date', today)
+              else if (v === 'yesterday') updateField('production_date', yesterday)
+              else dateInputRef.current?.showPicker?.()
+            }}
+            options={[
+              { value: 'today', label: 'Today' },
+              { value: 'yesterday', label: 'Yesterday' },
+              {
+                value: 'other',
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    {dateChoice === 'other' ? formatDate(form.production_date, 'MMM d') : 'Pick date'}
+                  </span>
+                ),
+              },
+            ]}
+          />
+        }
+      />
+      {/* Real date field behind "Pick date" (opened with showPicker; still focusable for keyboard users). */}
+      <label className="sr-only" htmlFor="production_date">Production date</label>
+      <input
+        ref={dateInputRef}
+        id="production_date"
+        type="date"
+        required
+        max={today}
+        value={form.production_date}
+        onChange={(e) => e.target.value && updateField('production_date', e.target.value)}
+        className="sr-only"
+      />
 
-      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
-        <Card>
-          <CardHeader className="pb-0">
-            <h2 className="text-sm font-semibold text-ink-800">What kind of day was this?</h2>
-          </CardHeader>
-          <CardContent className="mt-4 flex flex-col gap-4">
-            <div className="inline-flex rounded-md border border-ink-200 p-1 bg-ink-50 self-start">
-              <button
-                type="button"
-                onClick={() =>
-                  setForm((f) => ({ ...f, is_other_work: false, client_id: f.client_id === OTHER_CLIENT ? '' : f.client_id }))
-                }
-                className={cn(
-                  'px-3.5 py-1.5 text-sm font-medium rounded-[5px] transition-colors',
-                  !form.is_other_work ? 'bg-white text-ink-900 shadow-card' : 'text-ink-500 hover:text-ink-700'
-                )}
-              >
-                Client Work
-              </button>
-              <button
-                type="button"
-                onClick={() => updateField('is_other_work', true)}
-                className={cn(
-                  'px-3.5 py-1.5 text-sm font-medium rounded-[5px] transition-colors',
-                  form.is_other_work ? 'bg-white text-ink-900 shadow-card' : 'text-ink-500 hover:text-ink-700'
-                )}
-              >
-                Other Work
-              </button>
-            </div>
-            {form.is_other_work && (
-              <p className="text-xs text-ink-500">
-                For days without client production — internal tasks, training, admin, etc. Picking a client is
-                optional (you can type a name if they're not in the list), item counts are optional too, and it still
-                counts toward your streak as long as you say what you worked on below.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-0">
-            <h2 className="text-sm font-semibold text-ink-800">Details</h2>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            <Field label="Date" htmlFor="production_date" required>
-              <Input
-                id="production_date"
-                type="date"
-                required
-                value={form.production_date}
-                onChange={(e) => updateField('production_date', e.target.value)}
-              />
-            </Field>
-            <Field label="Day">
-              <Input value={dayOfWeek(form.production_date)} disabled />
-            </Field>
-            <Field
-              label={form.is_other_work ? 'Client (optional)' : 'Client'}
-              htmlFor="client_id"
-              required={!form.is_other_work}
-            >
-              <Select
-                id="client_id"
-                required={!form.is_other_work}
-                value={form.client_id}
-                onChange={(e) => updateField('client_id', e.target.value)}
-              >
-                <option value="">{form.is_other_work ? 'No client' : 'Select a client…'}</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-                {form.is_other_work && <option value={OTHER_CLIENT}>Other — not in list (type name)…</option>}
-              </Select>
-            </Field>
-            {form.is_other_work && form.client_id === OTHER_CLIENT && (
-              <Field label="Client name" htmlFor="other_client_name" required>
-                <Input
-                  id="other_client_name"
-                  required
-                  maxLength={120}
-                  placeholder="Who asked for this?"
-                  value={form.other_client_name}
-                  onChange={(e) => updateField('other_client_name', e.target.value)}
-                />
-              </Field>
-            )}
-          </CardContent>
-        </Card>
-
-        <>
-            <Card>
-              <CardHeader className="pb-0 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-ink-800">
-                  Production{form.is_other_work && <span className="font-normal text-ink-500"> (optional)</span>}
-                </h2>
-              </CardHeader>
-              <CardContent className="mt-4 flex flex-col divide-y divide-ink-100">
-                {PRODUCTION_FIELDS.map((f) => {
-                  const hasCount = form[f.countKey] > 0
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] gap-5 mt-6 items-start">
+        {/* ---------- Left column ---------- */}
+        <div className="flex flex-col gap-5 min-w-0">
+          <Card>
+            <div className="p-5">
+              <h2 className="text-[15px] font-semibold text-ink-900">What kind of day was this?</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3" role="radiogroup" aria-label="Type of work">
+                {[
+                  { other: false, icon: Clapperboard, title: 'Client production', sub: 'Videos, carousels, text posts' },
+                  { other: true, icon: Briefcase, title: 'Other work', sub: 'Meetings, admin, training…' },
+                ].map((opt) => {
+                  const active = form.is_other_work === opt.other
                   return (
-                    <div key={f.countKey} className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-3 items-end first:pt-0 last:pb-0">
-                      <Field label={f.label}>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={1}
-                          value={form[f.countKey]}
-                          onChange={(e) => updateField(f.countKey, Math.max(0, parseInt(e.target.value || '0', 10)))}
-                        />
-                      </Field>
-                      <Field label="Status" htmlFor={f.statusKey}>
-                        {hasCount ? (
-                          <Select
-                            id={f.statusKey}
-                            value={form[f.statusKey]}
-                            onChange={(e) => updateField(f.statusKey, e.target.value as ProductionStatus)}
-                          >
-                            <option value="completed">Completed</option>
-                            <option value="in_progress">In Progress</option>
-                          </Select>
-                        ) : (
-                          <div
-                            id={f.statusKey}
-                            className="h-9 flex items-center px-3 text-sm text-ink-400 bg-ink-50 border border-ink-100 rounded-md"
-                          >
-                            No status
-                          </div>
+                    <button
+                      key={opt.title}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() =>
+                        opt.other
+                          ? updateField('is_other_work', true)
+                          : setForm((f) => ({ ...f, is_other_work: false, client_id: f.client_id === OTHER_CLIENT ? '' : f.client_id }))
+                      }
+                      className={cn(
+                        'flex items-center gap-3 rounded-xl border-[1.5px] p-3.5 text-left transition-colors',
+                        active ? 'border-pine-500 bg-pine-50/70' : 'border-ink-200 hover:border-ink-300 bg-white'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'h-10 w-10 rounded-[10px] flex items-center justify-center shrink-0',
+                          active ? (opt.other ? 'bg-amber-100 text-amber-600' : 'bg-white text-pine-700 shadow-card') : 'bg-ink-100/70 text-ink-500'
                         )}
-                      </Field>
-                    </div>
+                      >
+                        <opt.icon className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-ink-900">{opt.title}</span>
+                        <span className="block text-xs text-ink-500 mt-0.5">{opt.sub}</span>
+                      </span>
+                      <span
+                        className={cn(
+                          'h-[18px] w-[18px] rounded-full shrink-0 transition-all',
+                          active ? 'border-[5px] border-pine-600' : 'border-2 border-ink-200'
+                        )}
+                      />
+                    </button>
                   )
                 })}
-              </CardContent>
-            </Card>
-
-            <div className="flex items-center justify-between bg-white border border-ink-100 rounded-card shadow-card px-5 py-4">
-              <span className="text-sm font-medium text-ink-600">Total Items</span>
-              <span className="text-2xl font-semibold text-ink-900">{runningTotal}</span>
-            </div>
-        </>
-
-        <Card>
-          <CardHeader className="pb-0">
-            <h2 className="text-sm font-semibold text-ink-800">{form.is_other_work ? 'What did you work on?' : 'Notes'}</h2>
-            <p className="text-xs text-ink-500 mt-0.5">
-              {form.is_other_work
-                ? 'Required — a short description of the non-client work you did today.'
-                : 'Optional — anything worth flagging for this entry.'}
-            </p>
-          </CardHeader>
-          <CardContent className="mt-3">
-            <Textarea
-              rows={3}
-              required={form.is_other_work}
-              placeholder={
-                form.is_other_work
-                  ? 'e.g. team training on the new editing workflow, onboarding paperwork, helped debug the upload script…'
-                  : 'e.g. client requested a re-cut on the intro, waiting on raw footage for Thursday…'
-              }
-              value={form.notes}
-              onChange={(e) => updateField('notes', e.target.value)}
-            />
-            {!form.is_other_work && form.notes.trim() && (
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <p className="text-xs text-ink-500">
-                  Was this actually non-production work? Move it to its own Other Work entry for this date
-                  {form.client_id ? ' (kept under the same client)' : ''}.
-                </p>
-                <Button type="button" variant="secondary" size="sm" loading={moving} onClick={moveNotesToOtherWork}>
-                  Move to Other Work
-                </Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              {form.is_other_work && (
+                <p className="text-xs text-ink-500 mt-3 leading-relaxed">
+                  For days without client production: internal tasks, training, admin, etc. Picking a client and item
+                  counts are optional, and it still counts toward your streak as long as you say what you worked on.
+                </p>
+              )}
 
-        <div className="flex gap-3 justify-end">
-          <Button type="button" variant="secondary" onClick={() => navigate(-1)}>
+              <div className="mt-5">
+                <p className="text-sm font-semibold text-ink-700 mb-2">
+                  {form.is_other_work ? 'Client (optional)' : 'Client'}
+                  {!form.is_other_work && <span className="text-clay-600 ml-0.5">*</span>}
+                </p>
+                {useChips ? (
+                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Client">
+                    {clientOptions.map((o) => {
+                      const active = form.client_id === o.value
+                      return (
+                        <button
+                          key={o.value || 'none'}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => updateField('client_id', o.value)}
+                          className={cn(
+                            'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors',
+                            active
+                              ? 'border-pine-500 bg-pine-50 text-pine-800 font-semibold'
+                              : 'border-ink-200 bg-white text-ink-700 font-medium hover:border-ink-300'
+                          )}
+                        >
+                          {o.value && o.value !== OTHER_CLIENT && (
+                            <span className={cn('h-2 w-2 rounded-full', active ? 'bg-pine-600' : 'bg-ink-300')} />
+                          )}
+                          {o.label}
+                        </button>
+                      )
+                    })}
+                    {clients.length === 0 && !form.is_other_work && (
+                      <p className="text-sm text-ink-500">No active clients yet. Ask an admin to add one.</p>
+                    )}
+                  </div>
+                ) : (
+                  <Select
+                    id="client_id"
+                    required={!form.is_other_work}
+                    value={form.client_id}
+                    onChange={(e) => updateField('client_id', e.target.value)}
+                  >
+                    <option value="">{form.is_other_work ? 'No client' : 'Select a client…'}</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                    {form.is_other_work && <option value={OTHER_CLIENT}>Other, not in list (type name)…</option>}
+                  </Select>
+                )}
+                {form.is_other_work && form.client_id === OTHER_CLIENT && (
+                  <div className="mt-3 max-w-sm">
+                    <Field label="Client name" htmlFor="other_client_name" required>
+                      <Input
+                        id="other_client_name"
+                        required
+                        maxLength={120}
+                        placeholder="Who asked for this?"
+                        value={form.other_client_name}
+                        onChange={(e) => updateField('other_client_name', e.target.value)}
+                      />
+                    </Field>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <div className="px-5 pt-5 flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="text-[15px] font-semibold text-ink-900">
+                Production{form.is_other_work && <span className="font-normal text-ink-500"> (optional)</span>}
+              </h2>
+              <span className="text-xs text-ink-500">Use – / + or type a number · set a status for each</span>
+            </div>
+            <div className="px-5 pb-2 mt-2 divide-y divide-ink-100">
+              {PRODUCTION_FIELDS.map((f, i) => {
+                const count = form[f.countKey]
+                const hasCount = count > 0
+                const Icon = FIELD_ICONS[i]
+                return (
+                  <div key={f.countKey} className="flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-2 py-3.5">
+                    <span
+                      className={cn(
+                        'h-10 w-10 rounded-[10px] flex items-center justify-center shrink-0',
+                        hasCount ? 'bg-pine-50 text-pine-700' : 'bg-ink-100/60 text-ink-400'
+                      )}
+                    >
+                      <Icon className="h-[18px] w-[18px]" />
+                    </span>
+                    <label
+                      htmlFor={f.countKey}
+                      className={cn('flex-1 min-w-[120px] text-sm', hasCount ? 'font-semibold text-ink-900' : 'font-medium text-ink-500')}
+                    >
+                      {f.label}
+                    </label>
+                    <div className="order-last sm:order-none w-full sm:w-auto pl-14 sm:pl-0">
+                      <Segmented
+                        size="sm"
+                        ariaLabel={`${f.label} status`}
+                        disabled={!hasCount}
+                        value={form[f.statusKey]}
+                        onChange={(v) => updateField(f.statusKey, v)}
+                        options={[
+                          { value: 'completed', label: <><Check className="h-3 w-3" /> Completed</> },
+                          { value: 'in_progress', label: <><Clock className="h-3 w-3" /> In progress</> },
+                        ]}
+                      />
+                    </div>
+                    <div className="flex items-center rounded-[10px] border border-ink-200 bg-white overflow-hidden shrink-0">
+                      <button
+                        type="button"
+                        aria-label={`Decrease ${f.label}`}
+                        disabled={!hasCount}
+                        onClick={() => updateField(f.countKey, Math.max(0, count - 1))}
+                        className="h-9 w-9 flex items-center justify-center text-ink-500 bg-ink-50/70 hover:bg-ink-100 disabled:opacity-40 disabled:hover:bg-ink-50/70"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <input
+                        id={f.countKey}
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        step={1}
+                        value={count}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => updateField(f.countKey, Math.max(0, parseInt(e.target.value || '0', 10) || 0))}
+                        className={cn(
+                          'no-spin h-9 w-12 text-center text-base font-bold tabular-nums bg-white outline-none focus:bg-pine-50',
+                          hasCount ? 'text-ink-900' : 'text-ink-300'
+                        )}
+                      />
+                      <button
+                        type="button"
+                        aria-label={`Increase ${f.label}`}
+                        onClick={() => updateField(f.countKey, count + 1)}
+                        className="h-9 w-9 flex items-center justify-center text-ink-600 bg-ink-50/70 hover:bg-pine-50 hover:text-pine-700"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        </div>
+
+        {/* ---------- Right column ---------- */}
+        <div className="flex flex-col gap-5 min-w-0 lg:sticky lg:top-[84px]">
+          <Card>
+            <div className="p-5">
+              <h2 className="text-[15px] font-semibold text-ink-900">
+                {form.is_other_work ? 'What did you work on?' : 'Notes'}
+                {form.is_other_work && <span className="text-clay-600 ml-0.5">*</span>}
+              </h2>
+              <p className="text-xs text-ink-500 mt-0.5">
+                {form.is_other_work
+                  ? 'A short description of the non-client work you did.'
+                  : 'Optional. Anything worth flagging for this entry.'}
+              </p>
+              <Textarea
+                rows={4}
+                className="mt-3"
+                required={form.is_other_work}
+                placeholder={
+                  form.is_other_work
+                    ? 'e.g. team training on the new editing workflow, onboarding paperwork…'
+                    : 'e.g. client requested a re-cut on the intro, waiting on raw footage for Thursday…'
+                }
+                value={form.notes}
+                onChange={(e) => updateField('notes', e.target.value)}
+              />
+              {!form.is_other_work && form.notes.trim() && (
+                <div className="mt-3 rounded-lg bg-amber-50 border border-amber-100 p-3">
+                  <p className="text-xs text-amber-800">
+                    Was this actually non-production work? Move it to its own Other Work entry for this date
+                    {form.client_id ? ' (kept under the same client)' : ''}.
+                  </p>
+                  <Button type="button" variant="secondary" size="sm" className="mt-2" loading={moving} onClick={moveNotesToOtherWork}>
+                    Move to Other Work
+                  </Button>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <div className="rounded-2xl border border-pine-100 bg-pine-50/70 p-5">
+            <h2 className="text-[15px] font-semibold text-ink-900">This entry</h2>
+            <div className="flex items-baseline gap-2 mt-2">
+              <span className="text-[40px] leading-none font-bold tracking-tight text-pine-800 tabular-nums">{runningTotal}</span>
+              <span className="text-sm text-ink-500 truncate">
+                item{runningTotal === 1 ? '' : 's'}
+                {selectedClientName ? ` · ${selectedClientName}` : ''}
+              </span>
+            </div>
+            {runningTotal > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-600">
+                <span className="inline-flex items-center gap-1"><Check className="h-3.5 w-3.5 text-pine-600" /> {completedCount} type{completedCount === 1 ? '' : 's'} completed</span>
+                <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-amber-500" /> {inProgressCount} in progress</span>
+              </div>
+            ) : (
+              <p className="text-xs text-ink-500 mt-3">
+                {form.is_other_work ? 'Item counts are optional for other work.' : 'Tap + on a content type to start counting.'}
+              </p>
+            )}
+          </div>
+
+          {sameDayLogs.length > 0 && (
+            <Card className="overflow-hidden">
+              <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+                <h2 className="text-[15px] font-semibold text-ink-900">Already logged that day</h2>
+                <span className="text-xs text-ink-500">{sameDayLogs.length}</span>
+              </div>
+              <div className="divide-y divide-ink-100">
+                {sameDayLogs.map((log) => (
+                  <Link
+                    key={log.id}
+                    to={`/daily-log?edit=${log.id}`}
+                    className="flex items-center gap-3 px-5 py-2.5 hover:bg-ink-50/70 text-sm"
+                  >
+                    <span className="flex-1 min-w-0 truncate font-medium text-ink-800">
+                      {logClientLabel(log as any, log.is_other_work ? 'Other work' : 'Unknown client')}
+                    </span>
+                    {!log.is_other_work && <span className="text-xs text-ink-500 shrink-0">{totalItems(log)} items</span>}
+                    <span className="text-xs font-semibold text-pine-700">Edit</span>
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Sticky save bar */}
+      <div className="sticky bottom-0 z-20 mt-6 -mx-4 sm:-mx-6 lg:-mx-8 bg-white/95 backdrop-blur border-t border-ink-100 shadow-bar px-4 sm:px-6 lg:px-8 py-3 pb-[max(12px,env(safe-area-inset-bottom))] flex items-center gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-ink-900">
+            {runningTotal} item{runningTotal === 1 ? '' : 's'}
+            {form.is_other_work && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-600 align-middle">Other work</span>}
+          </p>
+          <p className="text-xs text-ink-500 truncate">
+            {selectedClientName ?? (form.is_other_work ? 'No client' : 'No client selected')} ·{' '}
+            {formatDate(form.production_date, 'EEE, MMM d')}
+          </p>
+        </div>
+        <div className="ml-auto flex gap-2">
+          <Button type="button" variant="secondary" className="hidden sm:inline-flex" onClick={() => navigate(-1)}>
             Cancel
           </Button>
           <Button type="submit" loading={saving}>
-            Save Daily Log
+            <Check className="h-4 w-4" />
+            {editId ? 'Save changes' : 'Save log'}
           </Button>
         </div>
-      </form>
-    </div>
+      </div>
+    </form>
   )
 }

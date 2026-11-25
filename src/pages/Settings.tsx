@@ -50,13 +50,13 @@ export default function Settings() {
   return (
     <div className="max-w-xl flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-semibold text-ink-900">Settings</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Settings</h1>
         <p className="text-sm text-ink-500 mt-1">Manage your profile and account.</p>
       </div>
 
       <Card>
         <CardHeader>
-          <h2 className="text-sm font-semibold text-ink-800">Profile</h2>
+          <h2 className="text-[15px] font-semibold text-ink-900">Profile</h2>
         </CardHeader>
         <CardContent>
           <form onSubmit={saveProfile} className="flex flex-col gap-4 mt-2">
@@ -82,7 +82,7 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <h2 className="text-sm font-semibold text-ink-800">Password</h2>
+          <h2 className="text-[15px] font-semibold text-ink-900">Password</h2>
         </CardHeader>
         <CardContent>
           {profile?.must_change_password && (

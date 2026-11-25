@@ -14,16 +14,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-gradient-to-b from-pine-500 to-pine-700 text-white shadow-soft hover:from-pine-400 hover:to-pine-600 active:from-pine-600 active:to-pine-800 disabled:from-ink-200 disabled:to-ink-200 disabled:text-ink-400 disabled:shadow-none',
-  secondary: 'bg-white text-ink-800 border border-ink-200 hover:bg-pine-50 active:bg-pine-100',
-  ghost: 'bg-transparent text-ink-700 hover:bg-pine-50',
+    'bg-pine-600 text-white shadow-btn hover:bg-pine-700 active:bg-pine-800 disabled:bg-ink-200 disabled:text-ink-400 disabled:shadow-none',
+  secondary: 'bg-white text-ink-800 border border-ink-200 hover:bg-ink-50 hover:border-ink-300 active:bg-ink-100',
+  ghost: 'bg-transparent text-ink-700 hover:bg-ink-100/70',
   danger: 'bg-clay-600 text-white hover:bg-clay-500',
 }
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3.5 text-sm gap-1.5',
-  md: 'h-9 px-5 text-sm gap-2',
-  lg: 'h-11 px-6 text-base gap-2',
+  sm: 'h-8 px-3 text-sm gap-1.5',
+  md: 'h-9 px-4 text-sm gap-2',
+  lg: 'h-10 px-5 text-sm gap-2',
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -32,7 +32,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center rounded-full font-medium transition-colors whitespace-nowrap disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center rounded-lg font-semibold transition-colors whitespace-nowrap disabled:cursor-not-allowed',
         variantStyles[variant],
         sizeStyles[size],
         className
@@ -49,7 +49,7 @@ Button.displayName = 'Button'
 // ---------- Card ----------
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={cn('bg-white border border-ink-100 rounded-xl2 shadow-soft', className)}>
+    <div className={cn('bg-white border border-ink-100 rounded-2xl shadow-card', className)}>
       {children}
     </div>
   )
@@ -90,7 +90,7 @@ export function Badge({ variant, children }: { variant: BadgeVariant; children?:
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
+        'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap',
         badgeStyles[variant]
       )}
     >
@@ -105,8 +105,8 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     <input
       ref={ref}
       className={cn(
-        'h-9 w-full rounded-md border border-ink-200 bg-white px-3 text-sm text-ink-900 placeholder:text-ink-400',
-        'focus:border-pine-500 disabled:bg-ink-50 disabled:text-ink-400',
+        'h-10 w-full rounded-lg border border-ink-200 bg-white px-3 text-sm text-ink-900 placeholder:text-ink-400',
+        'focus:border-pine-500 focus:ring-2 focus:ring-pine-500/15 focus:outline-none disabled:bg-ink-50 disabled:text-ink-400',
         className
       )}
       {...props}
@@ -121,8 +121,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
     <select
       ref={ref}
       className={cn(
-        'h-9 w-full rounded-md border border-ink-200 bg-white px-3 text-sm text-ink-900',
-        'focus:border-pine-500 disabled:bg-ink-50 disabled:text-ink-400',
+        'h-10 w-full rounded-lg border border-ink-200 bg-white px-3 text-sm text-ink-900',
+        'focus:border-pine-500 focus:ring-2 focus:ring-pine-500/15 focus:outline-none disabled:bg-ink-50 disabled:text-ink-400',
         className
       )}
       {...props}
@@ -139,8 +139,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
     <textarea
       ref={ref}
       className={cn(
-        'w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 resize-y',
-        'focus:border-pine-500 disabled:bg-ink-50 disabled:text-ink-400',
+        'w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 resize-y',
+        'focus:border-pine-500 focus:ring-2 focus:ring-pine-500/15 focus:outline-none disabled:bg-ink-50 disabled:text-ink-400',
         className
       )}
       {...props}
@@ -207,6 +207,169 @@ export function PageSpinner() {
   return (
     <div className="flex items-center justify-center py-24">
       <Spinner className="h-6 w-6" />
+    </div>
+  )
+}
+
+// ---------- Page header ----------
+export function PageHeader({
+  title,
+  description,
+  actions,
+  className,
+}: {
+  title: ReactNode
+  description?: ReactNode
+  actions?: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn('flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4', className)}>
+      <div className="min-w-0">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{title}</h1>
+        {description && <p className="text-sm text-ink-500 mt-1">{description}</p>}
+      </div>
+      {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
+    </div>
+  )
+}
+
+// ---------- Section title ----------
+export function SectionTitle({
+  children,
+  aside,
+  className,
+}: {
+  children: ReactNode
+  aside?: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn('flex items-center justify-between gap-3 mb-3', className)}>
+      <h2 className="text-[15px] font-semibold text-ink-900 flex items-center gap-2">{children}</h2>
+      {aside && <div className="text-xs font-medium text-ink-500">{aside}</div>}
+    </div>
+  )
+}
+
+// ---------- Segmented control ----------
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  size = 'md',
+  disabled,
+  className,
+  ariaLabel,
+}: {
+  options: { value: T; label: ReactNode }[]
+  value: T
+  onChange: (v: T) => void
+  size?: 'sm' | 'md'
+  disabled?: boolean
+  className?: string
+  ariaLabel?: string
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={ariaLabel}
+      className={cn(
+        'inline-flex items-center rounded-[10px] bg-ink-100/80 p-[3px] gap-0.5',
+        disabled && 'opacity-40 pointer-events-none',
+        className
+      )}
+    >
+      {options.map((o) => {
+        const active = o.value === value
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            disabled={disabled}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              'rounded-lg font-medium transition-all whitespace-nowrap inline-flex items-center gap-1.5',
+              size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-sm',
+              active ? 'bg-white text-ink-900 shadow-card font-semibold' : 'text-ink-500 hover:text-ink-800'
+            )}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ---------- Stat card ----------
+export function StatCard({
+  label,
+  value,
+  delta,
+  deltaGood,
+  hint,
+  icon,
+  highlight,
+  className,
+}: {
+  label: ReactNode
+  value: ReactNode
+  /** Percentage or absolute change text, e.g. "12% vs last week". Arrow is added from the sign of `deltaGood`. */
+  delta?: ReactNode
+  /** true = good (green), false = bad (red), undefined = neutral. */
+  deltaGood?: boolean
+  /** "up" or "down" arrow for the delta. */
+  hint?: 'up' | 'down' | 'flat'
+  icon?: ReactNode
+  highlight?: boolean
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border p-4 sm:p-5 flex flex-col min-w-0',
+        highlight
+          ? 'bg-gradient-to-br from-pine-700 to-pine-900 border-transparent text-white'
+          : 'bg-white border-ink-100 shadow-card',
+        className
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className={cn('text-[13px] font-medium truncate', highlight ? 'text-pine-100' : 'text-ink-500')}>
+          {label}
+        </span>
+        {icon && (
+          <span
+            className={cn(
+              'h-7 w-7 rounded-lg flex items-center justify-center shrink-0',
+              highlight ? 'bg-white/15 text-white' : 'bg-pine-50 text-pine-700'
+            )}
+          >
+            {icon}
+          </span>
+        )}
+      </div>
+      <span className="text-[26px] leading-tight font-bold tracking-tight mt-2 tabular-nums">{value}</span>
+      {delta !== undefined && (
+        <span
+          className={cn(
+            'text-xs font-semibold mt-1 inline-flex items-center gap-1',
+            highlight
+              ? 'text-pine-100'
+              : deltaGood === undefined
+                ? 'text-ink-500'
+                : deltaGood
+                  ? 'text-pine-600'
+                  : 'text-clay-600'
+          )}
+        >
+          {hint && <span aria-hidden="true">{hint === 'up' ? '▲' : hint === 'down' ? '▼' : '–'}</span>}
+          <span>{delta}</span>
+        </span>
+      )}
     </div>
   )
 }
