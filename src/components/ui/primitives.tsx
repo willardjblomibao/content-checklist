@@ -366,8 +366,8 @@ export function StatCard({
                   : 'text-clay-600'
           )}
         >
-          {hint === 'up' ? '▲' : hint === 'down' ? '▼' : hint === 'flat' ? '–' : null}
-          {delta}
+          {hint && <span aria-hidden="true">{hint === 'up' ? '▲' : hint === 'down' ? '▼' : '–'}</span>}
+          <span>{delta}</span>
         </span>
       )}
     </div>

@@ -616,7 +616,7 @@ export default function DailyLog() {
           </p>
         </div>
         <div className="ml-auto flex gap-2">
-          <Button type="button" variant="secondary" onClick={() => navigate(-1)}>
+          <Button type="button" variant="secondary" className="hidden sm:inline-flex" onClick={() => navigate(-1)}>
             Cancel
           </Button>
           <Button type="submit" loading={saving}>
