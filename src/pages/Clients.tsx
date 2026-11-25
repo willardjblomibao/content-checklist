@@ -29,7 +29,7 @@ export default function Clients() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-ink-900">Clients</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Clients</h1>
           <p className="text-sm text-ink-500 mt-1">Only active clients appear in the daily log dropdown.</p>
         </div>
         <Button onClick={() => setShowAdd(true)}>
@@ -47,7 +47,7 @@ export default function Clients() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                   <th className="px-5 py-3">Client Name</th>
                   <th className="px-3 py-3">Status</th>
                   <th className="px-3 py-3">Date Added</th>
@@ -66,7 +66,7 @@ export default function Clients() {
                       <div className="flex justify-end gap-1">
                         <button
                           onClick={() => setSharing(c)}
-                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-md"
+                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
                           aria-label="Share link"
                           title="Client view-only report link"
                         >
@@ -74,7 +74,7 @@ export default function Clients() {
                         </button>
                         <button
                           onClick={() => setEditing(c)}
-                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-md"
+                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
                           aria-label="Edit"
                         >
                           <Pencil className="h-3.5 w-3.5" />

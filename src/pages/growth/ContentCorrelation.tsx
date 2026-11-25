@@ -139,7 +139,7 @@ export default function ContentCorrelation() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-ink-900 flex items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900 flex items-center gap-2">
             <Zap className="h-5 w-5 text-pine-700" />
             Content Impact
           </h1>
@@ -236,7 +236,7 @@ export default function ContentCorrelation() {
           </Card>
 
           <Card className="p-5">
-            <h2 className="text-sm font-semibold text-ink-800 mb-4">Content Output vs. Views, Week by Week</h2>
+            <h2 className="text-[15px] font-semibold text-ink-900 mb-4">Content Output vs. Views, Week by Week</h2>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ left: -10, right: 10 }}>
@@ -255,7 +255,7 @@ export default function ContentCorrelation() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-ink-800 mb-3 flex items-center gap-2">
+              <h2 className="text-[15px] font-semibold text-ink-900 mb-3 flex items-center gap-2">
                 <Trophy className="h-4 w-4 text-amber-500" />
                 Busiest Content Week
               </h2>
@@ -272,7 +272,7 @@ export default function ContentCorrelation() {
               )}
             </Card>
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-ink-800 mb-3 flex items-center gap-2">
+              <h2 className="text-[15px] font-semibold text-ink-900 mb-3 flex items-center gap-2">
                 <Users className="h-4 w-4 text-pine-600" />
                 Best Growth Week
               </h2>
@@ -292,12 +292,12 @@ export default function ContentCorrelation() {
 
           <Card className="overflow-hidden">
             <div className="px-5 py-4 border-b border-ink-100">
-              <h2 className="text-sm font-semibold text-ink-800">Weekly Breakdown</h2>
+              <h2 className="text-[15px] font-semibold text-ink-900">Weekly Breakdown</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                  <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                     <th className="px-5 py-3">Week</th>
                     <th className="px-3 py-3 text-right">Videos</th>
                     <th className="px-3 py-3 text-right">Carousels</th>

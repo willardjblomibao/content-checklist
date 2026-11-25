@@ -1,88 +1,72 @@
-import { useState } from 'react'
-import { Outlet, NavLink } from 'react-router-dom'
-import { Menu, X, Film } from 'lucide-react'
-import { Sidebar, assistantNav, adminNav } from './Sidebar'
+import { useEffect, useState } from 'react'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Sidebar } from './Sidebar'
+import { TopBar, GrowthTabs } from './TopBar'
+import { MobileNav } from './MobileNav'
+import { CommandPalette } from './CommandPalette'
 import { PasswordReminderBanner } from './PasswordReminderBanner'
 import { WhatsNewModal } from './WhatsNewModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { PresenceProvider } from '../../contexts/PresenceContext'
 import { cn } from '../../lib/utils'
 
-export function AppLayout() {
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const { isAdmin, profile, signOut } = useAuth()
+function isTyping(target: EventTarget | null) {
+  const el = target as HTMLElement | null
+  if (!el) return false
+  const tag = el.tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable
+}
 
-  // Single source of truth: the same nav list the desktop Sidebar uses,
-  // so mobile never falls behind when a page is added there.
-  const nav = isAdmin ? adminNav : assistantNav
+export function AppLayout() {
+  const { profile } = useAuth()
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const [paletteOpen, setPaletteOpen] = useState(false)
+
+  // Global shortcuts: ⌘K / Ctrl+K opens search, N starts a new daily log.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((o) => !o)
+        return
+      }
+      if (e.key.toLowerCase() === 'n' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTyping(e.target) && !paletteOpen) {
+        if (document.querySelector('[role="dialog"]')) return
+        e.preventDefault()
+        navigate('/daily-log')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [navigate, paletteOpen])
+
+  const inGrowth = pathname.startsWith('/growth')
+  const onDailyLog = pathname === '/daily-log'
 
   return (
     <PresenceProvider>
       <div className="flex min-h-screen bg-canvas">
-      <Sidebar />
+        <Sidebar />
 
-      {/* Mobile topbar */}
-      <div className="md:hidden fixed top-0 inset-x-0 z-30 h-14 bg-white border-b border-ink-100 flex items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-md bg-pine-800 flex items-center justify-center shrink-0">
-            <Film className="h-3.5 w-3.5 text-white" />
+        <main className="flex-1 min-w-0 pt-14 md:pt-0 flex flex-col">
+          <TopBar onSearch={() => setPaletteOpen(true)} />
+          {inGrowth && <GrowthTabs />}
+          <PasswordReminderBanner />
+          {profile && <WhatsNewModal />}
+          <div
+            className={cn(
+              'max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-6 md:pt-8 flex-1 flex flex-col',
+              onDailyLog ? 'pb-0' : 'pb-28 md:pb-10'
+            )}
+          >
+            <Outlet />
           </div>
-          <div className="flex flex-col leading-none">
-            <span className="brand-title text-sm">Partnerlee</span>
-            <span className="text-ink-400 text-[8px] font-medium tracking-wide uppercase">Content Tracker</span>
-          </div>
-        </div>
-        <button onClick={() => setMobileOpen(true)} className="text-ink-700 p-1.5" aria-label="Open menu">
-          <Menu className="h-5 w-5" />
-        </button>
+        </main>
+
+        <MobileNav />
+        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       </div>
-
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-white text-ink-900 overflow-y-auto">
-          <div className="flex items-center justify-between h-14 px-4 border-b border-ink-100">
-            <span className="font-semibold text-sm">Menu</span>
-            <button onClick={() => setMobileOpen(false)} aria-label="Close menu">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <nav className="flex flex-col p-3 gap-1">
-            {nav.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-2.5 px-4 py-2.5 rounded-full text-sm font-medium',
-                    isActive
-                      ? 'bg-gradient-to-b from-pine-500 to-pine-700 text-white'
-                      : 'text-ink-500 hover:bg-pine-50'
-                  )
-                }
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                {item.label}
-              </NavLink>
-            ))}
-            <button
-              onClick={signOut}
-              className="mt-4 text-left px-4 py-2.5 rounded-full text-sm font-medium text-clay-600"
-            >
-              Log out
-            </button>
-          </nav>
-        </div>
-      )}
-
-      <main className="flex-1 min-w-0 pt-14 md:pt-0 flex flex-col">
-        <PasswordReminderBanner />
-        {profile && <WhatsNewModal />}
-        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 md:py-8">
-          <Outlet />
-        </div>
-      </main>
-    </div>
     </PresenceProvider>
   )
 }

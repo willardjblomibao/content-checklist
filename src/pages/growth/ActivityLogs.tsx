@@ -37,7 +37,7 @@ export default function ActivityLogs() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-ink-900">Activity Logs</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Activity Logs</h1>
           <p className="text-sm text-ink-500 mt-1">
             {isAdmin ? "Every action taken across the Growth Tracker module." : 'Your own Growth Tracker activity.'}
           </p>

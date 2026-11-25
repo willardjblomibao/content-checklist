@@ -29,17 +29,17 @@ export function Dialog({
   if (!open) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-40 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
-      <div className="fixed inset-0 bg-ink-950/40" onClick={onClose} />
-      <div className={`relative bg-white rounded-xl2 shadow-softLg w-full ${width} mt-8 sm:mt-0`}>
+    <div className="fixed inset-0 z-40 flex items-start sm:items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="fixed inset-0 bg-ink-950/30 backdrop-blur-[2px]" onClick={onClose} />
+      <div className={`relative bg-white rounded-2xl shadow-softLg border border-ink-100 w-full ${width} mt-8 sm:mt-0 overflow-hidden`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-ink-100">
           <h2 className="text-base font-semibold text-ink-900">{title}</h2>
-          <button onClick={onClose} className="text-ink-400 hover:text-ink-700" aria-label="Close">
+          <button onClick={onClose} className="text-ink-400 hover:text-ink-700 p-1 rounded-lg hover:bg-ink-100" aria-label="Close">
             <X className="h-4.5 w-4.5" />
           </button>
         </div>
         <div className="px-5 py-4">{children}</div>
-        {footer && <div className="flex justify-end gap-2 px-5 py-4 border-t border-ink-100">{footer}</div>}
+        {footer && <div className="flex justify-end gap-2 px-5 py-3.5 border-t border-ink-100 bg-ink-50/50">{footer}</div>}
       </div>
     </div>,
     document.body

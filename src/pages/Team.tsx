@@ -75,7 +75,7 @@ export default function Team() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-ink-900">Team</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Team</h1>
           <p className="text-sm text-ink-500 mt-1 flex items-center gap-2 flex-wrap">
             <span>Manage assistants and admins.</span>
             <span className="inline-flex items-center gap-1.5 text-pine-700 font-medium">
@@ -99,7 +99,7 @@ export default function Team() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                   <th className="px-5 py-3">Name</th>
                   <th className="px-3 py-3">Email</th>
                   <th className="px-3 py-3">Role</th>
@@ -157,7 +157,7 @@ export default function Team() {
                         {m.role !== 'admin' && (
                           <button
                             onClick={() => setAssigning(m)}
-                            className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-md"
+                            className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
                             aria-label="Assign client"
                           >
                             <Link2 className="h-3.5 w-3.5" />
@@ -165,14 +165,14 @@ export default function Team() {
                         )}
                         <button
                           onClick={() => setEditing(m)}
-                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-md"
+                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
                           aria-label="Edit"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => setToggling(m)}
-                          className="p-1.5 text-ink-500 hover:text-clay-600 hover:bg-clay-50 rounded-md"
+                          className="p-1.5 text-ink-500 hover:text-clay-600 hover:bg-clay-50 rounded-lg"
                           aria-label={m.status === 'active' ? 'Deactivate' : 'Activate'}
                         >
                           {m.status === 'active' ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}

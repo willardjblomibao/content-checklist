@@ -1,84 +1,106 @@
-import { Video, Repeat, GalleryHorizontal, FileText, Layers } from 'lucide-react'
-import { Card } from '../ui/primitives'
-import { PRODUCTION_FIELDS } from '../../types/database'
+import { Video, GalleryHorizontal, FileText, Repeat, Layers } from 'lucide-react'
+import { Segmented, StatCard } from '../ui/primitives'
+import { percentChange } from '../../lib/utils'
 
-export type RangeKey = 'today' | 'week' | 'month' | 'custom'
+export type RangeKey = 'today' | 'week' | 'month'
 
-const ICONS = [Video, Repeat, GalleryHorizontal, Repeat, FileText, Repeat]
+const COMPARE_LABEL: Record<RangeKey, string> = {
+  today: 'vs yesterday',
+  week: 'vs last week',
+  month: 'vs last month',
+}
 
-export function KpiCards({ totals }: { totals: Record<string, number> }) {
-  const items = [
-    ...PRODUCTION_FIELDS.map((f, i) => ({
-      label: f.label,
-      value: totals[f.countKey] ?? 0,
-      icon: ICONS[i],
-    })),
-    {
-      label: 'Total Items',
-      value: Object.values(totals).reduce((a, b) => a + b, 0),
-      icon: Layers,
-      highlight: true,
-    },
+function sum(t: Record<string, number>, keys: string[]) {
+  return keys.reduce((s, k) => s + (t[k] ?? 0), 0)
+}
+
+const TILES = [
+  { label: 'Videos edited', keys: ['videos_edited_count'], icon: Video },
+  { label: 'Carousels edited', keys: ['carousels_edited_count'], icon: GalleryHorizontal },
+  { label: 'Text posts prepared', keys: ['text_posts_prepared_count'], icon: FileText },
+  {
+    label: 'Re-edits',
+    keys: ['videos_reedited_count', 'carousels_reedited_count', 'text_posts_reedited_count'],
+    icon: Repeat,
+    // Fewer re-edits is the good direction.
+    lowerIsBetter: true,
+  },
+] as const
+
+/**
+ * Production totals for the selected range: a highlighted "Total items" tile
+ * plus one tile per content type. Re-edits for all three types are rolled
+ * into one tile. When `previous` is given, each tile shows the change
+ * against the same span one period earlier.
+ */
+export function KpiCards({
+  totals,
+  previous,
+  range,
+}: {
+  totals: Record<string, number>
+  previous?: Record<string, number>
+  range: RangeKey
+}) {
+  const allKeys = Object.keys(totals)
+  const tiles = [
+    { label: 'Total items', keys: allKeys as readonly string[], icon: Layers, highlight: true, lowerIsBetter: false },
+    ...TILES.map((t) => ({ ...t, highlight: false, lowerIsBetter: 'lowerIsBetter' in t ? t.lowerIsBetter : false })),
   ]
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-      {items.map((item) => (
-        <Card
-          key={item.label}
-          className={item.highlight ? 'bg-gradient-to-br from-pine-600 to-pine-900 border-transparent' : ''}
-        >
-          <div className="px-4 py-4 flex items-start gap-3">
-            <div
-              className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${
-                item.highlight ? 'bg-white/15 text-white' : 'bg-pine-50 text-pine-700'
-              }`}
-            >
-              <item.icon className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <span className={`text-xs font-medium ${item.highlight ? 'text-pine-100' : 'text-ink-500'}`}>
-                {item.label}
-              </span>
-              <p className={`text-2xl font-semibold mt-1 ${item.highlight ? 'text-white' : 'text-ink-900'}`}>
-                {item.value}
-              </p>
-            </div>
-          </div>
-        </Card>
-      ))}
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      {tiles.map((tile, i) => {
+        const value = sum(totals, [...tile.keys])
+        let delta: string | undefined
+        let hint: 'up' | 'down' | 'flat' | undefined
+        let good: boolean | undefined
+        if (previous) {
+          const prev = sum(previous, [...tile.keys])
+          const pct = percentChange(value, prev)
+          if (pct === null) {
+            delta = `New ${COMPARE_LABEL[range]}`
+            hint = 'up'
+            good = !tile.lowerIsBetter
+          } else if (pct === 0) {
+            delta = `Same as ${COMPARE_LABEL[range].replace('vs ', '')}`
+            hint = 'flat'
+          } else {
+            delta = `${Math.abs(pct)}% ${COMPARE_LABEL[range]}`
+            hint = pct > 0 ? 'up' : 'down'
+            good = tile.lowerIsBetter ? pct < 0 : pct > 0
+          }
+        }
+        const Icon = tile.icon
+        return (
+          <StatCard
+            key={tile.label}
+            label={tile.label}
+            value={value}
+            delta={delta}
+            hint={hint}
+            deltaGood={good}
+            icon={<Icon className="h-3.5 w-3.5" />}
+            highlight={tile.highlight}
+            className={i === 0 ? 'col-span-2 lg:col-span-1' : ''}
+          />
+        )
+      })}
     </div>
   )
 }
 
-export function RangeSwitcher({
-  value,
-  onChange,
-}: {
-  value: RangeKey
-  onChange: (v: RangeKey) => void
-}) {
-  const options: { key: RangeKey; label: string }[] = [
-    { key: 'today', label: 'Today' },
-    { key: 'week', label: 'This Week' },
-    { key: 'month', label: 'This Month' },
-    { key: 'custom', label: 'Custom' },
-  ]
+export function RangeSwitcher({ value, onChange }: { value: RangeKey; onChange: (v: RangeKey) => void }) {
   return (
-    <div className="inline-flex rounded-full border border-ink-100 bg-white p-1 shadow-soft">
-      {options.map((o) => (
-        <button
-          key={o.key}
-          onClick={() => onChange(o.key)}
-          className={`px-3.5 py-1.5 text-sm font-medium rounded-full transition-colors ${
-            value === o.key
-              ? 'bg-gradient-to-b from-pine-500 to-pine-700 text-white'
-              : 'text-ink-600 hover:bg-pine-50'
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
+    <Segmented
+      ariaLabel="Date range"
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: 'today', label: 'Today' },
+        { value: 'week', label: 'This week' },
+        { value: 'month', label: 'This month' },
+      ]}
+    />
   )
 }

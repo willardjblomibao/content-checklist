@@ -122,7 +122,7 @@ export default function GrowthReports() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-ink-900">Growth Reports</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Growth Reports</h1>
         <p className="text-sm text-ink-500 mt-1">
           {isAdmin ? 'Export any client’s growth data as CSV, Excel or PDF.' : 'Export your assigned client’s growth data.'}
         </p>
@@ -148,7 +148,7 @@ export default function GrowthReports() {
                 ))}
               </Select>
             ) : (
-              <div className="h-9 flex items-center px-3 text-sm text-ink-700 bg-ink-50 border border-ink-100 rounded-md">
+              <div className="h-10 flex items-center px-3 text-sm text-ink-700 bg-ink-50 border border-ink-100 rounded-lg">
                 {assignedClients[0]?.name ?? 'No client assigned'}
               </div>
             )}
@@ -183,7 +183,7 @@ export default function GrowthReports() {
       ) : (
         <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-sm font-semibold text-ink-800">{rows.length} entries</h2>
+            <h2 className="text-[15px] font-semibold text-ink-900">{rows.length} entries</h2>
             <p className="text-xs text-ink-500">
               {totalViews.toLocaleString()} total views · {totalAudience.toLocaleString()} new audience
             </p>
@@ -191,7 +191,7 @@ export default function GrowthReports() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ink-100 text-left text-xs font-medium text-ink-500">
+                <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
                   <th className="px-5 py-3">Week</th>
                   <th className="px-3 py-3">Platform</th>
                   <th className="px-3 py-3 text-right">Views</th>

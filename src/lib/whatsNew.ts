@@ -1,7 +1,7 @@
 // Bump this whenever you add a new batch of items below — that's what
 // makes the popup show up again for everyone, exactly once, until they
 // dismiss it. Old version strings are harmless to leave in git history.
-export const WHATS_NEW_VERSION = '2026-09-growth-tracker-5'
+export const WHATS_NEW_VERSION = '2026-11-partnerlee-2.0'
 
 export interface WhatsNewItem {
   title: string
@@ -9,6 +9,26 @@ export interface WhatsNewItem {
 }
 
 export const WHATS_NEW_ITEMS: WhatsNewItem[] = [
+  {
+    title: '✨ Partnerlee 2.0: a fresh new look',
+    description:
+      'A cleaner layout across the whole app. The sidebar is grouped (Workspace, Growth, Admin), Growth pages have tabs along the top, and "Log today\'s work" is always one click away.',
+  },
+  {
+    title: '🏠 A "Today" card on your dashboard',
+    description:
+      'See what you\'ve logged today, your streak, and how this week compares with last week at a glance.',
+  },
+  {
+    title: '➕ Faster daily logging',
+    description:
+      'Tap – / + to count each content type, set its status with one tap, and pick Today or Yesterday in a click. A save bar stays at the bottom, and you\'ll see anything you already logged that day.',
+  },
+  {
+    title: '⌨️ Shortcuts and a mobile tab bar',
+    description:
+      'Press ⌘K (Ctrl+K on Windows) to jump to any page, or N to start a new log. On phones, a bottom tab bar replaces the old full-screen menu.',
+  },
   {
     title: '📥 Import Monthly Report',
     description:
