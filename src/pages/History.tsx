@@ -8,7 +8,7 @@ import { useToast } from '../contexts/ToastContext'
 import { useProductionLogs, deleteProductionLog, type LogFilters } from '../hooks/useProductionLogs'
 import { Badge, Button, Card, EmptyState, Field, PageSpinner, Select, Input } from '../components/ui/primitives'
 import { ConfirmDialog } from '../components/ui/dialog'
-import { PRODUCTION_FIELDS, totalItems, logClientLabel, logClientName, type Client, type Profile } from '../types/database'
+import { PRODUCTION_FIELDS, totalItems, videoFormatCsvValues, logClientLabel, logClientName, type Client, type Profile } from '../types/database'
 import { dayOfWeek, formatDate } from '../lib/utils'
 
 const PAGE_SIZE = 20
@@ -70,6 +70,7 @@ export default function History() {
       ...Object.fromEntries(
         PRODUCTION_FIELDS.map((f) => [f.label, (log as any)[f.countKey]])
       ),
+      ...videoFormatCsvValues(log),
       'Total Items': totalItems(log),
       Notes: log.notes ?? '',
     }))

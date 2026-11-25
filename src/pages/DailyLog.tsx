@@ -32,6 +32,13 @@ type FormState = {
   videos_edited_status: ProductionStatus
   videos_reedited_count: number
   videos_reedited_status: ProductionStatus
+  videos_edited_short_count: number
+  videos_edited_long_count: number
+  videos_reedited_short_count: number
+  videos_reedited_long_count: number
+  /** Client-only: videos on an older log that were never split by format (saved before migration 011). */
+  videos_edited_unsplit: number
+  videos_reedited_unsplit: number
   carousels_edited_count: number
   carousels_edited_status: ProductionStatus
   carousels_reedited_count: number
@@ -41,6 +48,35 @@ type FormState = {
   text_posts_reedited_count: number
   text_posts_reedited_status: ProductionStatus
   notes: string
+}
+
+// Video rows are counted as short-form + long-form; their *_count total is
+// always short + long (+ any unsplit remainder from an older log).
+const VIDEO_PARTS = {
+  videos_edited_count: {
+    short: 'videos_edited_short_count',
+    long: 'videos_edited_long_count',
+    unsplit: 'videos_edited_unsplit',
+  },
+  videos_reedited_count: {
+    short: 'videos_reedited_short_count',
+    long: 'videos_reedited_long_count',
+    unsplit: 'videos_reedited_unsplit',
+  },
+} as const
+type VideoTotalKey = keyof typeof VIDEO_PARTS
+type VideoPartKey = (typeof VIDEO_PARTS)[VideoTotalKey][keyof (typeof VIDEO_PARTS)[VideoTotalKey]]
+const FORMAT_COLUMNS = [
+  'videos_edited_short_count',
+  'videos_edited_long_count',
+  'videos_reedited_short_count',
+  'videos_reedited_long_count',
+] as const
+
+function splitFromRow(total: number, short?: number | null, long?: number | null) {
+  const s = short ?? 0
+  const l = long ?? 0
+  return { short: s, long: l, unsplit: Math.max(0, total - s - l) }
 }
 
 // Sentinel option in the Other Work client dropdown: client isn't in the list, type their name instead.
@@ -55,6 +91,12 @@ const emptyForm: FormState = {
   videos_edited_status: 'completed',
   videos_reedited_count: 0,
   videos_reedited_status: 'completed',
+  videos_edited_short_count: 0,
+  videos_edited_long_count: 0,
+  videos_reedited_short_count: 0,
+  videos_reedited_long_count: 0,
+  videos_edited_unsplit: 0,
+  videos_reedited_unsplit: 0,
   carousels_edited_count: 0,
   carousels_edited_status: 'completed',
   carousels_reedited_count: 0,
@@ -125,6 +167,18 @@ export default function DailyLog() {
             videos_edited_status: data.videos_edited_status,
             videos_reedited_count: data.videos_reedited_count,
             videos_reedited_status: data.videos_reedited_status,
+            ...(() => {
+              const e = splitFromRow(data.videos_edited_count, data.videos_edited_short_count, data.videos_edited_long_count)
+              const r = splitFromRow(data.videos_reedited_count, data.videos_reedited_short_count, data.videos_reedited_long_count)
+              return {
+                videos_edited_short_count: e.short,
+                videos_edited_long_count: e.long,
+                videos_edited_unsplit: e.unsplit,
+                videos_reedited_short_count: r.short,
+                videos_reedited_long_count: r.long,
+                videos_reedited_unsplit: r.unsplit,
+              }
+            })(),
             carousels_edited_count: data.carousels_edited_count,
             carousels_edited_status: data.carousels_edited_status,
             carousels_reedited_count: data.carousels_reedited_count,
@@ -148,7 +202,19 @@ export default function DailyLog() {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
+  /** Change one format part of a video row and keep the row total in step. */
+  function updateVideoPart(totalKey: VideoTotalKey, part: VideoPartKey, value: number) {
+    setForm((f) => {
+      const next = { ...f, [part]: Math.max(0, value) }
+      const parts = VIDEO_PARTS[totalKey]
+      next[totalKey] = next[parts.short] + next[parts.long] + next[parts.unsplit]
+      return next
+    })
+  }
+
   const runningTotal = totalItems(form)
+  const shortTotal = form.videos_edited_short_count + form.videos_reedited_short_count
+  const longTotal = form.videos_edited_long_count + form.videos_reedited_long_count
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -175,7 +241,8 @@ export default function DailyLog() {
     }
 
     setSaving(true)
-    const { client_id, other_client_name, ...rest } = form
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { client_id, other_client_name, videos_edited_unsplit, videos_reedited_unsplit, ...rest } = form
     // Other Work: client is optional — a listed client, a typed name, or neither.
     // Client Work: always a listed client.
     const payload = {
@@ -187,9 +254,21 @@ export default function DailyLog() {
       user_id: ownerId ?? profile.id,
     }
 
-    const { error } = editId
-      ? await supabase.from('production_logs').update(payload).eq('id', editId)
-      : await supabase.from('production_logs').insert(payload)
+    const save = (body: Record<string, unknown>) =>
+      editId
+        ? supabase.from('production_logs').update(body as any).eq('id', editId)
+        : supabase.from('production_logs').insert(body as any)
+
+    let { error } = await save(payload)
+    // Database not migrated yet (011_video_formats.sql): save the totals
+    // without the short/long split rather than losing the log.
+    let savedWithoutFormats = false
+    if (error && FORMAT_COLUMNS.some((c) => error!.message.includes(c))) {
+      const fallback: Record<string, unknown> = { ...payload }
+      for (const c of FORMAT_COLUMNS) delete fallback[c]
+      ;({ error } = await save(fallback))
+      savedWithoutFormats = !error
+    }
 
     setSaving(false)
 
@@ -198,7 +277,11 @@ export default function DailyLog() {
       return
     }
 
-    toast(editId ? 'Daily log updated.' : 'Daily log saved.', 'success')
+    if (savedWithoutFormats) {
+      toast('Saved, but short/long-form isn\'t set up in the database yet. Ask an admin to run migration 011.', 'info')
+    } else {
+      toast(editId ? 'Daily log updated.' : 'Daily log saved.', 'success')
+    }
     navigate(isAdmin ? '/history' : '/')
   }
 
@@ -449,7 +532,13 @@ export default function DailyLog() {
                 const hasCount = count > 0
                 const Icon = FIELD_ICONS[i]
                 return (
-                  <div key={f.countKey} className="flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-2 py-3.5">
+                  <div
+                    key={f.countKey}
+                    className={cn(
+                      'flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5',
+                      !(f.countKey in VIDEO_PARTS) && 'sm:flex-nowrap'
+                    )}
+                  >
                     <span
                       className={cn(
                         'h-10 w-10 rounded-[10px] flex items-center justify-center shrink-0',
@@ -463,6 +552,9 @@ export default function DailyLog() {
                       className={cn('flex-1 min-w-[120px] text-sm', hasCount ? 'font-semibold text-ink-900' : 'font-medium text-ink-500')}
                     >
                       {f.label}
+                      {f.countKey in VIDEO_PARTS && hasCount && (
+                        <span className="ml-2 text-xs font-medium text-ink-500">{count} total</span>
+                      )}
                     </label>
                     <div className="order-last sm:order-none w-full sm:w-auto pl-14 sm:pl-0">
                       <Segmented
@@ -477,39 +569,48 @@ export default function DailyLog() {
                         ]}
                       />
                     </div>
-                    <div className="flex items-center rounded-[10px] border border-ink-200 bg-white overflow-hidden shrink-0">
-                      <button
-                        type="button"
-                        aria-label={`Decrease ${f.label}`}
-                        disabled={!hasCount}
-                        onClick={() => updateField(f.countKey, Math.max(0, count - 1))}
-                        className="h-9 w-9 flex items-center justify-center text-ink-500 bg-ink-50/70 hover:bg-ink-100 disabled:opacity-40 disabled:hover:bg-ink-50/70"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <input
+                    {!(f.countKey in VIDEO_PARTS) && (
+                      <Counter
                         id={f.countKey}
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        step={1}
+                        label={f.label}
                         value={count}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => updateField(f.countKey, Math.max(0, parseInt(e.target.value || '0', 10) || 0))}
-                        className={cn(
-                          'no-spin h-9 w-12 text-center text-base font-bold tabular-nums bg-white outline-none focus:bg-pine-50',
-                          hasCount ? 'text-ink-900' : 'text-ink-300'
-                        )}
+                        onChange={(v) => updateField(f.countKey, v)}
                       />
-                      <button
-                        type="button"
-                        aria-label={`Increase ${f.label}`}
-                        onClick={() => updateField(f.countKey, count + 1)}
-                        className="h-9 w-9 flex items-center justify-center text-ink-600 bg-ink-50/70 hover:bg-pine-50 hover:text-pine-700"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                    </div>
+                    )}
+                    {f.countKey in VIDEO_PARTS && (() => {
+                      const parts = VIDEO_PARTS[f.countKey as VideoTotalKey]
+                      return (
+                        <div className="w-full flex flex-wrap items-center gap-x-4 gap-y-2 pl-14">
+                          {(['short', 'long'] as const).map((kind) => (
+                            <div key={kind} className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-ink-600 w-[74px]">
+                                {kind === 'short' ? 'Short-form' : 'Long-form'}
+                              </span>
+                              <Counter
+                                id={kind === 'short' ? f.countKey : `${f.countKey}-long`}
+                                label={`${f.label}, ${kind}-form`}
+                                value={form[parts[kind]]}
+                                onChange={(v) => updateVideoPart(f.countKey as VideoTotalKey, parts[kind], v)}
+                              />
+                            </div>
+                          ))}
+                          {form[parts.unsplit] > 0 && (
+                            <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-100 pl-2.5 pr-1 py-1 text-xs text-amber-800">
+                              {form[parts.unsplit]} not specified
+                              <button
+                                type="button"
+                                title="Remove one unspecified video (then add it as short or long)"
+                                aria-label={`Remove one unspecified ${f.label.toLowerCase()}`}
+                                onClick={() => updateVideoPart(f.countKey as VideoTotalKey, parts.unsplit, form[parts.unsplit] - 1)}
+                                className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-amber-100"
+                              >
+                                <Minus className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )
               })}
@@ -569,6 +670,11 @@ export default function DailyLog() {
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-600">
                 <span className="inline-flex items-center gap-1"><Check className="h-3.5 w-3.5 text-pine-600" /> {completedCount} type{completedCount === 1 ? '' : 's'} completed</span>
                 <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-amber-500" /> {inProgressCount} in progress</span>
+                {shortTotal + longTotal > 0 && (
+                  <span className="inline-flex items-center gap-1 w-full">
+                    <Video className="h-3.5 w-3.5 text-pine-600" /> {shortTotal} short-form · {longTotal} long-form
+                  </span>
+                )}
               </div>
             ) : (
               <p className="text-xs text-ink-500 mt-3">
@@ -626,5 +732,46 @@ export default function DailyLog() {
         </div>
       </div>
     </form>
+  )
+}
+
+/** – / number / + stepper used on every production row. */
+function Counter({ id, label, value, onChange }: { id: string; label: string; value: number; onChange: (v: number) => void }) {
+  const has = value > 0
+  return (
+    <div className="flex items-center rounded-[10px] border border-ink-200 bg-white overflow-hidden shrink-0">
+      <button
+        type="button"
+        aria-label={`Decrease ${label}`}
+        disabled={!has}
+        onClick={() => onChange(Math.max(0, value - 1))}
+        className="h-9 w-9 flex items-center justify-center text-ink-500 bg-ink-50/70 hover:bg-ink-100 disabled:opacity-40 disabled:hover:bg-ink-50/70"
+      >
+        <Minus className="h-4 w-4" />
+      </button>
+      <input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        aria-label={label}
+        min={0}
+        step={1}
+        value={value}
+        onFocus={(e) => e.target.select()}
+        onChange={(e) => onChange(Math.max(0, parseInt(e.target.value || '0', 10) || 0))}
+        className={cn(
+          'no-spin h-9 w-12 text-center text-base font-bold tabular-nums bg-white outline-none focus:bg-pine-50',
+          has ? 'text-ink-900' : 'text-ink-300'
+        )}
+      />
+      <button
+        type="button"
+        aria-label={`Increase ${label}`}
+        onClick={() => onChange(value + 1)}
+        className="h-9 w-9 flex items-center justify-center text-ink-600 bg-ink-50/70 hover:bg-pine-50 hover:text-pine-700"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+    </div>
   )
 }

@@ -314,6 +314,7 @@ export function StatCard({
   icon,
   highlight,
   className,
+  sub,
 }: {
   label: ReactNode
   value: ReactNode
@@ -326,6 +327,8 @@ export function StatCard({
   icon?: ReactNode
   highlight?: boolean
   className?: string
+  /** Small secondary line under the value, e.g. a breakdown. */
+  sub?: ReactNode
 }) {
   return (
     <div
@@ -353,6 +356,7 @@ export function StatCard({
         )}
       </div>
       <span className="text-[26px] leading-tight font-bold tracking-tight mt-2 tabular-nums">{value}</span>
+      {sub && <span className={cn('text-xs mt-0.5', highlight ? 'text-pine-100' : 'text-ink-500')}>{sub}</span>}
       {delta !== undefined && (
         <span
           className={cn(

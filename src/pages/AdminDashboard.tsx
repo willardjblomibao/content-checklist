@@ -8,7 +8,7 @@ import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap
 import { OtherWorkPanel } from '../components/dashboard/OtherWorkPanel'
 import { Card, EmptyState, PageSpinner, PageHeader, SectionTitle } from '../components/ui/primitives'
 import { TodayHero, chipsFor } from '../components/dashboard/TodayHero'
-import { PRODUCTION_FIELDS, logActivityCount, logClientLabel, type Profile, type ProductionLogWithRelations } from '../types/database'
+import { PRODUCTION_FIELDS, logActivityCount, videoFormatTotals, editedSplit, logClientLabel, type Profile, type ProductionLogWithRelations } from '../types/database'
 import { cn, formatDate, initials, previousPeriod, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
 
 function sumFields(logs: ProductionLogWithRelations[]) {
@@ -169,7 +169,7 @@ export default function AdminDashboard() {
                 team.filter((m) => onlineUserIds.has(m.id)).length
               } online now`
         }
-        chips={chipsFor(todayTotals)}
+        chips={chipsFor(todayTotals, videoFormatTotals(todayLogs))}
         ctaLabel="Log today's work"
         ctaIsPrimaryAction
       />
@@ -178,7 +178,7 @@ export default function AdminDashboard() {
         <SectionTitle aside={<RangeSwitcher value={range} onChange={setRange} />} className="flex-wrap">
           Team production
         </SectionTitle>
-        {!loading && <KpiCards totals={totals} previous={prevTotals} range={range} />}
+        {!loading && <KpiCards totals={totals} previous={prevTotals} range={range} videoSplit={editedSplit(logs)} />}
       </section>
 
       {loading ? (

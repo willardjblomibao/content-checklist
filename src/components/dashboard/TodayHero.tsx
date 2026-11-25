@@ -75,9 +75,11 @@ export function TodayHero({
 }
 
 /** Counts for the hero chips, grouped the way people talk about them. */
-export function chipsFor(totals: Record<string, number>) {
+export function chipsFor(totals: Record<string, number>, formats?: { short: number; long: number }) {
+  const videos = (totals.videos_edited_count ?? 0) + (totals.videos_reedited_count ?? 0)
+  const split = formats && formats.short + formats.long > 0 ? ` (${formats.short} short · ${formats.long} long)` : ''
   return [
-    { label: 'videos', value: (totals.videos_edited_count ?? 0) + (totals.videos_reedited_count ?? 0) },
+    { label: `videos${split}`, value: videos },
     { label: 'carousels', value: (totals.carousels_edited_count ?? 0) + (totals.carousels_reedited_count ?? 0) },
     { label: 'text posts', value: (totals.text_posts_prepared_count ?? 0) + (totals.text_posts_reedited_count ?? 0) },
   ]

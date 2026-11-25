@@ -92,6 +92,14 @@ totals, dashboards and History), and the client dropdown has an "Other — not i
 list" option that lets the assistant type a client's name (`other_client_name`).
 Only Other Work rows that have items appear in a client's public report.
 
+**Short-form vs long-form videos:** run `supabase/migrations/011_video_formats.sql`
+after 010. It adds `videos_edited_short_count`, `videos_edited_long_count`,
+`videos_reedited_short_count` and `videos_reedited_long_count`. The existing
+`videos_edited_count` / `videos_reedited_count` stay the totals (so nothing else
+changes); the new columns say how many of them were short-form or long-form.
+Logs saved before this show their videos as "not specified". Until the
+migration is run, the Daily Log still saves, just without the format split.
+
 **Move notes to Other Work:** on a Client Work entry, once Notes has text, a
 "Move to Other Work" button creates a separate Other Work entry for the same
 date (tagged to the same client, no items) using that text, and clears the note
