@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom'
 import { StickyNote } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { usePresence } from '../contexts/PresenceContext'
-import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/KpiCards'
+import { KpiCards, RangeSwitcher, type RangeKey, type CustomRange } from '../components/dashboard/KpiCards'
 import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap'
 import { OtherWorkPanel } from '../components/dashboard/OtherWorkPanel'
 import { Card, EmptyState, PageSpinner, PageHeader, SectionTitle } from '../components/ui/primitives'
 import { TodayHero, chipsFor } from '../components/dashboard/TodayHero'
+import { LogCalendar, summarizeMonth } from '../components/dashboard/LogCalendar'
+import { endOfMonth, format, startOfMonth } from 'date-fns'
 import { PRODUCTION_FIELDS, logActivityCount, videoFormatTotals, editedSplit, logClientLabel, type Profile, type ProductionLogWithRelations } from '../types/database'
 import { cn, formatDate, initials, previousPeriod, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
 
@@ -22,8 +24,9 @@ function sumFields(logs: ProductionLogWithRelations[]) {
 
 const AVATAR_COLORS = ['bg-pine-600', 'bg-violet-500', 'bg-clay-500', 'bg-amber-500', 'bg-pine-400', 'bg-coral-500']
 
-function rangeToDates(range: RangeKey): { from: string; to: string } {
+function rangeToDates(range: RangeKey, custom: CustomRange): { from: string; to: string } {
   const to = todayISO()
+  if (range === 'custom') return custom.from <= custom.to ? custom : { from: custom.to, to: custom.from }
   if (range === 'today') return { from: to, to }
   if (range === 'week') return { from: startOfWeekISO(), to }
   return { from: startOfMonthISO(), to }
@@ -32,6 +35,7 @@ function rangeToDates(range: RangeKey): { from: string; to: string } {
 export default function AdminDashboard() {
   const { onlineUserIds } = usePresence()
   const [range, setRange] = useState<RangeKey>('week')
+  const [custom, setCustom] = useState<CustomRange>(() => ({ from: startOfMonthISO(), to: todayISO() }))
   const [logs, setLogs] = useState<ProductionLogWithRelations[]>([])
   const [prevLogs, setPrevLogs] = useState<ProductionLogWithRelations[]>([])
   const [todayLogs, setTodayLogs] = useState<ProductionLogWithRelations[]>([])
@@ -39,8 +43,12 @@ export default function AdminDashboard() {
   const [recentNotes, setRecentNotes] = useState<ProductionLogWithRelations[]>([])
   const [heatmapLogs, setHeatmapLogs] = useState<ProductionLogWithRelations[]>([])
   const [loading, setLoading] = useState(true)
+  const [calMonth, setCalMonth] = useState(() => startOfMonth(new Date()))
+  const [calLogs, setCalLogs] = useState<ProductionLogWithRelations[]>([])
+  const [calLoading, setCalLoading] = useState(true)
+  const [calUserId, setCalUserId] = useState<string | null>(null)
 
-  const { from, to } = rangeToDates(range)
+  const { from, to } = rangeToDates(range, custom)
   const prev = previousPeriod(range, from, to)
 
   useEffect(() => {
@@ -95,6 +103,38 @@ export default function AdminDashboard() {
       .gte('production_date', start.toISOString().slice(0, 10))
       .then(({ data }) => setHeatmapLogs((data ?? []) as unknown as ProductionLogWithRelations[]))
   }, [])
+
+  // Logging calendar: every assistant's entries in the displayed month.
+  useEffect(() => {
+    setCalLoading(true)
+    supabase
+      .from('production_logs')
+      .select('user_id, production_date, videos_edited_count, videos_reedited_count, carousels_edited_count, carousels_reedited_count, text_posts_prepared_count, text_posts_reedited_count, is_other_work')
+      .gte('production_date', format(calMonth, 'yyyy-MM-dd'))
+      .lte('production_date', format(endOfMonth(calMonth), 'yyyy-MM-dd'))
+      .then(({ data }) => {
+        setCalLogs((data ?? []) as unknown as ProductionLogWithRelations[])
+        setCalLoading(false)
+      })
+  }, [calMonth])
+
+  // Per-assistant activity counts and missed workdays for that month.
+  const calByUser = useMemo(() => {
+    const maps = new Map<string, Map<string, number>>()
+    for (const log of calLogs) {
+      const m = maps.get(log.user_id) ?? new Map<string, number>()
+      m.set(log.production_date, (m.get(log.production_date) ?? 0) + logActivityCount(log))
+      maps.set(log.user_id, m)
+    }
+    return team
+      .map((member) => {
+        const counts = maps.get(member.id) ?? new Map<string, number>()
+        const startDate = member.created_at.slice(0, 10)
+        return { member, counts, startDate, summary: summarizeMonth(calMonth, counts, startDate) }
+      })
+      .sort((a, b) => b.summary.missed.length - a.summary.missed.length || a.member.full_name.localeCompare(b.member.full_name))
+  }, [calLogs, team, calMonth])
+  const calSelected = calByUser.find((r) => r.member.id === calUserId) ?? calByUser[0]
 
   const heatmapCounts = useMemo(() => {
     const map = new Map<string, number>()
@@ -175,7 +215,7 @@ export default function AdminDashboard() {
       />
 
       <section>
-        <SectionTitle aside={<RangeSwitcher value={range} onChange={setRange} />} className="flex-wrap">
+        <SectionTitle aside={<RangeSwitcher value={range} onChange={setRange} custom={custom} onCustomChange={setCustom} />} className="flex-wrap">
           Team production
         </SectionTitle>
         {!loading && <KpiCards totals={totals} previous={prevTotals} range={range} videoSplit={editedSplit(logs)} />}
@@ -243,6 +283,74 @@ export default function AdminDashboard() {
               </Card>
             </section>
           </div>
+
+          {calSelected && (
+            <section>
+              <SectionTitle aside={`${calByUser.filter((r) => r.summary.missed.length > 0).length} of ${calByUser.length} missed a day in ${format(calMonth, 'MMMM')}`}>
+                Log calendar
+              </SectionTitle>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                <div className="lg:col-span-2 min-w-0">
+                  <LogCalendar
+                    month={calMonth}
+                    onMonthChange={setCalMonth}
+                    counts={calSelected.counts}
+                    startDate={calSelected.startDate}
+                    personLabel={calSelected.member.full_name.split(' ')[0]}
+                    loading={calLoading}
+                  />
+                </div>
+                <Card className="overflow-hidden">
+                  <div className="px-4 pt-4 pb-2">
+                    <p className="text-[15px] font-semibold text-ink-900">Missed workdays</p>
+                    <p className="text-xs text-ink-500">{format(calMonth, 'MMMM yyyy')} · select someone to see their calendar</p>
+                  </div>
+                  <div className="divide-y divide-ink-100">
+                    {calByUser.map(({ member, summary }, i) => {
+                      const active = member.id === calSelected.member.id
+                      const missed = summary.missed.length
+                      return (
+                        <button
+                          key={member.id}
+                          type="button"
+                          onClick={() => setCalUserId(member.id)}
+                          aria-pressed={active}
+                          className={cn(
+                            'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                            active ? 'bg-pine-50' : 'hover:bg-ink-50/70'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'h-8 w-8 rounded-full text-white flex items-center justify-center text-xs font-semibold shrink-0',
+                              AVATAR_COLORS[i % AVATAR_COLORS.length]
+                            )}
+                          >
+                            {initials(member.full_name)}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className={cn('block text-sm truncate', active ? 'font-semibold text-pine-800' : 'font-medium text-ink-900')}>
+                              {member.full_name}
+                            </span>
+                            <span className="block text-xs text-ink-500">
+                              {summary.loggedWorkdays}/{summary.workdays} workdays logged
+                            </span>
+                          </span>
+                          {missed > 0 ? (
+                            <span className="rounded-full bg-clay-100 px-2 py-0.5 text-[11px] font-semibold text-clay-600 whitespace-nowrap">
+                              {missed} missed
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-pine-100 px-2 py-0.5 text-[11px] font-semibold text-pine-800">All logged</span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </Card>
+              </div>
+            </section>
+          )}
 
           <section>
             <SectionTitle>Team other work</SectionTitle>
