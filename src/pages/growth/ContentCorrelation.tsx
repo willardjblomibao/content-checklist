@@ -3,7 +3,7 @@ import { Zap, Video, TrendingUp, Users, Clock, Trophy } from 'lucide-react'
 import { ContentImpactCharts } from '../../components/charts/GrowthCharts'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { Card, EmptyState, PageSpinner, Select } from '../../components/ui/primitives'
+import { Card, EmptyState, PageSpinner, Select, StatCard } from '../../components/ui/primitives'
 import type { Client } from '../../types/database'
 import { formatDate, mondayOfISO, pearsonCorrelation, describeCorrelation } from '../../lib/utils'
 
@@ -183,40 +183,25 @@ export default function ContentCorrelation() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="p-4">
-              <div className="flex items-center gap-2 text-ink-500">
-                <Zap className="h-4 w-4" />
-                <span className="text-xs font-medium">Same-Week Correlation</span>
-              </div>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{sameWeekR === null ? '—' : sameWeekR.toFixed(2)}</p>
-              <p className="text-xs text-ink-500 mt-1">{describeCorrelation(sameWeekR)}</p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-2 text-ink-500">
-                <Clock className="h-4 w-4" />
-                <span className="text-xs font-medium">Next-Week Correlation</span>
-              </div>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{laggedR === null ? '—' : laggedR.toFixed(2)}</p>
-              <p className="text-xs text-ink-500 mt-1">{describeCorrelation(laggedR)}</p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-2 text-ink-500">
-                <Video className="h-4 w-4" />
-                <span className="text-xs font-medium">Total Content Items</span>
-              </div>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{totalContent.toLocaleString()}</p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-2 text-ink-500">
-                <TrendingUp className="h-4 w-4" />
-                <span className="text-xs font-medium">Total Views</span>
-              </div>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{totalViews.toLocaleString()}</p>
-            </Card>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatCard
+              highlight
+              label="Same-week correlation"
+              icon={<Zap className="h-3.5 w-3.5" />}
+              value={sameWeekR === null ? '—' : sameWeekR.toFixed(2)}
+              sub={describeCorrelation(sameWeekR)}
+            />
+            <StatCard
+              label="Next-week correlation"
+              icon={<Clock className="h-3.5 w-3.5" />}
+              value={laggedR === null ? '—' : laggedR.toFixed(2)}
+              sub={describeCorrelation(laggedR)}
+            />
+            <StatCard label="Total content items" icon={<Video className="h-3.5 w-3.5" />} value={totalContent.toLocaleString()} />
+            <StatCard label="Total views" icon={<TrendingUp className="h-3.5 w-3.5" />} value={totalViews.toLocaleString()} />
           </div>
 
-          <Card className="p-4 bg-pine-50 border-pine-100">
+          <Card className="p-4 bg-pine-50/70 border-pine-100 shadow-none">
             <p className="text-sm text-pine-800">
               <strong>Reading this:</strong> Same-week correlation checks if busier content weeks line up with more views
               that same week. Next-week correlation checks for a delayed payoff — content posted this week showing up as

@@ -1,12 +1,19 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { Plus, Pencil, UserX, UserCheck, Link2 } from 'lucide-react'
+import { Plus, Pencil, UserX, UserCheck, Link2, Search } from 'lucide-react'
 import { supabase, createIsolatedAuthClient } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import { usePresence } from '../contexts/PresenceContext'
-import { Badge, Button, Card, EmptyState, Field, Input, PageSpinner, Select } from '../components/ui/primitives'
+import { Badge, Button, Card, EmptyState, Field, Input, PageSpinner, Select, PageHeader, StatCard, Segmented } from '../components/ui/primitives'
 import { Dialog, ConfirmDialog } from '../components/ui/dialog'
 import type { Client, ClientAssignment, Profile, UserRole } from '../types/database'
-import { formatDate } from '../lib/utils'
+import { cn, formatDate, initials } from '../lib/utils'
+
+const AVATAR_COLORS = ['bg-pine-600', 'bg-violet-500', 'bg-clay-500', 'bg-amber-500', 'bg-pine-400', 'bg-coral-500']
+function avatarColor(id: string) {
+  let h = 0
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return AVATAR_COLORS[h % AVATAR_COLORS.length]
+}
 
 type MemberTotals = Record<string, number>
 
@@ -22,6 +29,8 @@ export default function Team() {
   const [showAdd, setShowAdd] = useState(false)
   const [toggling, setToggling] = useState<Profile | null>(null)
   const [assigning, setAssigning] = useState<Profile | null>(null)
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'assistant' | 'admin' | 'inactive'>('all')
 
   async function load() {
     setLoading(true)
@@ -71,23 +80,67 @@ export default function Team() {
     }
   }
 
+  const q = search.trim().toLowerCase()
+  const shown = members.filter(
+    (m) =>
+      (roleFilter === 'all' || (roleFilter === 'inactive' ? m.status === 'inactive' : m.role === roleFilter && m.status === 'active')) &&
+      (!q || m.full_name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))
+  )
+  const onlineCount = members.filter((m) => onlineUserIds.has(m.id)).length
+  const activeAssistants = members.filter((m) => m.role === 'assistant' && m.status === 'active')
+  const unassigned = activeAssistants.filter((m) => (assignments[m.id]?.length ?? 0) === 0).length
+
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Team</h1>
-          <p className="text-sm text-ink-500 mt-1 flex items-center gap-2 flex-wrap">
-            <span>Manage assistants and admins.</span>
-            <span className="inline-flex items-center gap-1.5 text-pine-700 font-medium">
-              <span className="h-1.5 w-1.5 rounded-full bg-pine-500" />
-              {members.filter((m) => onlineUserIds.has(m.id)).length} online now
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Team"
+        description="Manage assistants and admins, and who works on which client."
+        actions={
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="h-4 w-4" />
+            Add member
+          </Button>
+        }
+      />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Team members" value={members.filter((m) => m.status === 'active').length} sub={`${members.filter((m) => m.status === 'inactive').length} inactive`} />
+        <StatCard label="Active assistants" value={activeAssistants.length} highlight />
+        <StatCard
+          label="Online now"
+          value={
+            <span className="inline-flex items-center gap-2">
+              {onlineCount}
+              <span className="relative flex h-2.5 w-2.5">
+                {onlineCount > 0 && <span className="absolute inline-flex h-full w-full rounded-full bg-pine-400 opacity-60 animate-ping" />}
+                <span className={cn('relative inline-flex h-2.5 w-2.5 rounded-full', onlineCount > 0 ? 'bg-pine-500' : 'bg-ink-300')} />
+              </span>
             </span>
-          </p>
+          }
+        />
+        <StatCard
+          label="Unassigned assistants"
+          value={unassigned}
+          sub={unassigned > 0 ? 'Assign them a client' : 'Everyone has a client'}
+        />
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <Segmented
+          ariaLabel="Filter members"
+          value={roleFilter}
+          onChange={setRoleFilter}
+          options={[
+            { value: 'all', label: 'All' },
+            { value: 'assistant', label: 'Assistants' },
+            { value: 'admin', label: 'Admins' },
+            { value: 'inactive', label: 'Inactive' },
+          ]}
+        />
+        <div className="relative sm:ml-auto sm:w-64">
+          <Search className="h-4 w-4 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or email" className="pl-9" aria-label="Search team" />
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="h-4 w-4" />
-          Add Member
-        </Button>
       </div>
 
       <Card className="overflow-hidden">
@@ -95,92 +148,109 @@ export default function Team() {
           <PageSpinner />
         ) : members.length === 0 ? (
           <EmptyState title="No team members yet" description="Add your first content assistant to get started." />
+        ) : shown.length === 0 ? (
+          <EmptyState title="No one matches" description="Try a different filter or search." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
-                  <th className="px-5 py-3">Name</th>
-                  <th className="px-3 py-3">Email</th>
+                  <th className="px-5 py-3">Member</th>
                   <th className="px-3 py-3">Role</th>
-                  <th className="px-3 py-3">Assigned Client</th>
+                  <th className="px-3 py-3">Clients</th>
                   <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3">Date Joined</th>
-                  <th className="px-3 py-3 text-right">Total Items</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
+                  <th className="px-3 py-3 whitespace-nowrap">Joined</th>
+                  <th className="px-3 py-3 text-right whitespace-nowrap">Total items</th>
+                  <th className="px-5 py-3 w-[120px]" />
                 </tr>
               </thead>
               <tbody>
-                {members.map((m) => (
-                  <tr key={m.id} className="border-b border-ink-50 last:border-0">
-                    <td className="px-5 py-3 font-medium text-ink-900 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-2">
-                        <span
-                          className={`h-2 w-2 rounded-full shrink-0 ${
-                            onlineUserIds.has(m.id) ? 'bg-pine-500' : 'bg-ink-200'
-                          }`}
-                          title={onlineUserIds.has(m.id) ? 'Online' : 'Offline'}
-                          aria-hidden="true"
-                        />
-                        {m.full_name}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-ink-600 whitespace-nowrap">{m.email}</td>
-                    <td className="px-3 py-3">
-                      <Badge variant={m.role === 'admin' ? 'admin' : 'assistant'} />
-                    </td>
-                    <td className="px-3 py-3 text-ink-600">
-                      {m.role === 'admin' ? (
-                        <span className="text-ink-300">—</span>
-                      ) : (assignments[m.id]?.length ?? 0) === 0 ? (
-                        <span className="text-amber-600 text-xs font-medium">Unassigned</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {assignments[m.id]!.map((a) => {
-                            const name = clients.find((c) => c.id === a.client_id)?.name
-                            return name ? (
-                              <span key={a.id} className="inline-flex text-xs font-medium bg-ink-50 text-ink-700 px-2 py-0.5 rounded-full">
-                                {name}
-                              </span>
-                            ) : null
-                          })}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
-                      <Badge variant={m.status} />
-                    </td>
-                    <td className="px-3 py-3 text-ink-500 whitespace-nowrap">{formatDate(m.created_at)}</td>
-                    <td className="px-3 py-3 text-right font-medium text-ink-800">{totals[m.id] ?? 0}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-1">
-                        {m.role !== 'admin' && (
+                {shown.map((m) => {
+                  const online = onlineUserIds.has(m.id)
+                  return (
+                    <tr key={m.id} className={cn('border-b border-ink-100/70 last:border-0 hover:bg-ink-50/60', m.status === 'inactive' && 'opacity-60')}>
+                      <td className="px-5 py-3">
+                        <span className="flex items-center gap-3 min-w-0">
+                          <span className="relative shrink-0">
+                            <span className={cn('h-9 w-9 rounded-full text-white flex items-center justify-center text-xs font-semibold', avatarColor(m.id))}>
+                              {initials(m.full_name)}
+                            </span>
+                            <span
+                              className={cn('absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white', online ? 'bg-pine-500' : 'bg-ink-200')}
+                              title={online ? 'Online' : 'Offline'}
+                            />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block font-semibold text-ink-900 truncate">{m.full_name}</span>
+                            <span className="block text-xs text-ink-500 truncate">{m.email}</span>
+                          </span>
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <Badge variant={m.role === 'admin' ? 'admin' : 'assistant'} />
+                      </td>
+                      <td className="px-3 py-3 text-ink-600">
+                        {m.role === 'admin' ? (
+                          <span className="text-ink-300">—</span>
+                        ) : (assignments[m.id]?.length ?? 0) === 0 ? (
                           <button
                             onClick={() => setAssigning(m)}
-                            className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
-                            aria-label="Assign client"
+                            className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-600 hover:bg-amber-200"
                           >
-                            <Link2 className="h-3.5 w-3.5" />
+                            <Plus className="h-3 w-3" /> Assign
                           </button>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {assignments[m.id]!.map((a) => {
+                              const name = clients.find((c) => c.id === a.client_id)?.name
+                              return name ? (
+                                <span key={a.id} className="inline-flex items-center gap-1 text-xs font-medium bg-ink-100/70 text-ink-700 px-2 py-0.5 rounded-md whitespace-nowrap">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-pine-500" />
+                                  {name}
+                                </span>
+                              ) : null
+                            })}
+                          </div>
                         )}
-                        <button
-                          onClick={() => setEditing(m)}
-                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
-                          aria-label="Edit"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setToggling(m)}
-                          className="p-1.5 text-ink-500 hover:text-clay-600 hover:bg-clay-50 rounded-lg"
-                          aria-label={m.status === 'active' ? 'Deactivate' : 'Activate'}
-                        >
-                          {m.status === 'active' ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-3 py-3">
+                        <Badge variant={m.status} />
+                      </td>
+                      <td className="px-3 py-3 text-ink-500 whitespace-nowrap">{formatDate(m.created_at, 'MMM d, yyyy')}</td>
+                      <td className="px-3 py-3 text-right font-bold text-ink-900 tabular-nums">{(totals[m.id] ?? 0).toLocaleString()}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end gap-0.5">
+                          {m.role !== 'admin' && (
+                            <button
+                              onClick={() => setAssigning(m)}
+                              className="p-1.5 text-ink-400 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
+                              aria-label="Assign clients"
+                              title="Assign clients"
+                            >
+                              <Link2 className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setEditing(m)}
+                            className="p-1.5 text-ink-400 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
+                            aria-label="Edit"
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setToggling(m)}
+                            className="p-1.5 text-ink-400 hover:text-clay-600 hover:bg-clay-50 rounded-lg"
+                            aria-label={m.status === 'active' ? 'Deactivate' : 'Activate'}
+                            title={m.status === 'active' ? 'Deactivate' : 'Activate'}
+                          >
+                            {m.status === 'active' ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

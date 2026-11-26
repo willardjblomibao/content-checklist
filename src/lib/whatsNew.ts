@@ -1,7 +1,7 @@
 // Bump this whenever you add a new batch of items below — that's what
 // makes the popup show up again for everyone, exactly once, until they
 // dismiss it. Old version strings are harmless to leave in git history.
-export const WHATS_NEW_VERSION = '2026-11-partnerlee-2.0-video-formats'
+export const WHATS_NEW_VERSION = '2026-11-partnerlee-2.1'
 
 export interface WhatsNewItem {
   title: string
@@ -9,6 +9,21 @@ export interface WhatsNewItem {
 }
 
 export const WHATS_NEW_ITEMS: WhatsNewItem[] = [
+  {
+    title: '📅 Log calendar: spot missed days',
+    description:
+      'Your dashboard now has a calendar of the month. Days you logged are green, missed workdays are red, and clicking a missed day opens the Daily Log for that date. Admins can see every assistant\'s calendar and who missed days.',
+  },
+  {
+    title: '🗓️ Custom date ranges',
+    description:
+      'Pick any From/To dates on the dashboard, History and Growth reports, alongside quick ranges like This week and Last 30 days.',
+  },
+  {
+    title: '✨ Every page refreshed',
+    description:
+      'History, Weekly input, Team, Clients, Platforms, Settings, the Activity log, Growth reports and the client report link all have the new 2.0 design.',
+  },
   {
     title: '🎬 Short-form vs long-form videos',
     description:

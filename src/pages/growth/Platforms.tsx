@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { cn } from '../../lib/utils'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../contexts/ToastContext'
-import { Badge, Button, Card, EmptyState, Field, Input, PageSpinner, Select } from '../../components/ui/primitives'
+import { Badge, Button, Card, EmptyState, Field, Input, PageSpinner, Select, PageHeader } from '../../components/ui/primitives'
 import { Dialog, ConfirmDialog } from '../../components/ui/dialog'
 import type { Client, Platform } from '../../types/database'
 
@@ -59,81 +60,77 @@ export default function Platforms() {
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Platforms</h1>
-          <p className="text-sm text-ink-500 mt-1">The channels each client is tracked on — feeds the Weekly Growth Input form.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {clients.length > 0 && (
-            <Select className="w-48" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          )}
-          <Button onClick={() => setShowAdd(true)} disabled={!clientId}>
-            <Plus className="h-4 w-4" />
-            Add Platform
-          </Button>
-        </div>
-      </div>
-
-      <Card className="overflow-hidden">
-        {loading ? (
-          <PageSpinner />
-        ) : platforms.length === 0 ? (
-          <EmptyState title="No platforms yet" description="Add YouTube, Instagram, TikTok, or any channel this client is tracked on." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
-                  <th className="px-5 py-3">Platform</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {platforms.map((p) => (
-                  <tr key={p.id} className="border-b border-ink-50 last:border-0">
-                    <td className="px-5 py-3 font-medium text-ink-900">
-                      <span className="inline-flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
-                        {p.name}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <Badge variant={p.active ? 'active' : 'inactive'} />
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-1">
-                        <button
-                          onClick={() => setEditing(p)}
-                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
-                          aria-label="Edit"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setToDelete(p)}
-                          className="p-1.5 text-ink-500 hover:text-clay-600 hover:bg-clay-50 rounded-lg"
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Platforms"
+        description="The channels each client is tracked on. They become the rows in Weekly input."
+        actions={
+          <>
+            {clients.length > 0 && (
+              <Select className="w-auto min-w-[180px]" value={clientId} onChange={(e) => setClientId(e.target.value)} aria-label="Client">
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+              </Select>
+            )}
+            <Button onClick={() => setShowAdd(true)} disabled={!clientId}>
+              <Plus className="h-4 w-4" />
+              Add platform
+            </Button>
+          </>
+        }
+      />
+
+      {loading ? (
+        <PageSpinner />
+      ) : platforms.length === 0 ? (
+        <Card>
+          <EmptyState title="No platforms yet" description="Add YouTube, Instagram, TikTok, or any channel this client is tracked on." />
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {platforms.map((p) => (
+            <Card key={p.id} className={cn('p-5 relative overflow-hidden group', !p.active && 'opacity-70')}>
+              <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: p.color }} />
+              <div className="flex items-start gap-3">
+                <span
+                  className="h-11 w-11 rounded-xl flex items-center justify-center text-base font-bold text-white shrink-0 shadow-soft"
+                  style={{ backgroundColor: p.color }}
+                >
+                  {p.name.slice(0, 1).toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink-900 truncate">{p.name}</p>
+                  <div className="mt-1">
+                    <Badge variant={p.active ? 'active' : 'inactive'} />
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 mt-4 pt-3 border-t border-ink-100">
+                <Button variant="ghost" size="sm" onClick={() => setEditing(p)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </Button>
+                <Button variant="ghost" size="sm" className="ml-auto text-clay-600 hover:bg-clay-50" onClick={() => setToDelete(p)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </Button>
+              </div>
+            </Card>
+          ))}
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            disabled={!clientId}
+            className="rounded-2xl border-2 border-dashed border-ink-200 p-5 flex flex-col items-center justify-center gap-2 text-sm font-semibold text-ink-500 hover:border-pine-400 hover:text-pine-700 hover:bg-pine-50/50 transition-colors min-h-[148px]"
+          >
+            <Plus className="h-5 w-5" />
+            Add platform
+          </button>
+        </div>
+      )}
 
       <PlatformDialog open={showAdd} clientId={clientId} onClose={() => setShowAdd(false)} onSaved={load} />
       {editing && (

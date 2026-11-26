@@ -1,11 +1,18 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { Plus, Pencil, Link2, Copy, Check } from 'lucide-react'
+import { Plus, Pencil, Link2, Copy, Check, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
-import { Badge, Button, Card, EmptyState, Field, Input, PageSpinner, Select } from '../components/ui/primitives'
+import { Badge, Button, Card, EmptyState, Field, Input, PageSpinner, Select, PageHeader, StatCard, Segmented } from '../components/ui/primitives'
 import { Dialog } from '../components/ui/dialog'
 import type { Client, ClientShareLink, ClientStatus } from '../types/database'
-import { formatDate } from '../lib/utils'
+import { cn, formatDate } from '../lib/utils'
+
+const CLIENT_COLORS = ['bg-pine-600', 'bg-violet-500', 'bg-coral-500', 'bg-amber-500', 'bg-clay-500', 'bg-pine-400']
+function clientColor(id: string) {
+  let h = 0
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return CLIENT_COLORS[h % CLIENT_COLORS.length]
+}
 
 export default function Clients() {
   const [clients, setClients] = useState<Client[]>([])
@@ -13,6 +20,8 @@ export default function Clients() {
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<Client | null>(null)
   const [sharing, setSharing] = useState<Client | null>(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
 
   async function load() {
     setLoading(true)
@@ -25,69 +34,84 @@ export default function Clients() {
     load()
   }, [])
 
+  const q = search.trim().toLowerCase()
+  const shown = clients.filter((c) => (statusFilter === 'all' || c.status === statusFilter) && (!q || c.name.toLowerCase().includes(q)))
+  const activeCount = clients.filter((c) => c.status === 'active').length
+
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Clients</h1>
-          <p className="text-sm text-ink-500 mt-1">Only active clients appear in the daily log dropdown.</p>
-        </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="h-4 w-4" />
-          Add Client
-        </Button>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Clients"
+        description="Only active clients appear in the Daily Log. Share a view-only report link with any client."
+        actions={
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="h-4 w-4" />
+            Add client
+          </Button>
+        }
+      />
+
+      <div className="grid grid-cols-3 gap-3 max-w-2xl">
+        <StatCard label="Active" value={activeCount} highlight />
+        <StatCard label="Inactive" value={clients.length - activeCount} />
+        <StatCard label="Total" value={clients.length} />
       </div>
 
-      <Card className="overflow-hidden">
-        {loading ? (
-          <PageSpinner />
-        ) : clients.length === 0 ? (
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <Segmented
+          ariaLabel="Filter clients"
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            { value: 'all', label: 'All' },
+            { value: 'active', label: 'Active' },
+            { value: 'inactive', label: 'Inactive' },
+          ]}
+        />
+        <div className="relative sm:ml-auto sm:w-64">
+          <Search className="h-4 w-4 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients" className="pl-9" aria-label="Search clients" />
+        </div>
+      </div>
+
+      {loading ? (
+        <PageSpinner />
+      ) : clients.length === 0 ? (
+        <Card>
           <EmptyState title="No clients yet" description="Add your first client to start logging production against them." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
-                  <th className="px-5 py-3">Client Name</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3">Date Added</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map((c) => (
-                  <tr key={c.id} className="border-b border-ink-50 last:border-0">
-                    <td className="px-5 py-3 font-medium text-ink-900">{c.name}</td>
-                    <td className="px-3 py-3">
-                      <Badge variant={c.status} />
-                    </td>
-                    <td className="px-3 py-3 text-ink-500 whitespace-nowrap">{formatDate(c.created_at)}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-1">
-                        <button
-                          onClick={() => setSharing(c)}
-                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
-                          aria-label="Share link"
-                          title="Client view-only report link"
-                        >
-                          <Link2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setEditing(c)}
-                          className="p-1.5 text-ink-500 hover:text-pine-700 hover:bg-pine-50 rounded-lg"
-                          aria-label="Edit"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+        </Card>
+      ) : shown.length === 0 ? (
+        <Card>
+          <EmptyState title="No clients match" description="Try a different filter or search." />
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {shown.map((c) => (
+            <Card key={c.id} className={cn('p-5 flex flex-col gap-4 transition-shadow hover:shadow-soft', c.status === 'inactive' && 'opacity-70')}>
+              <div className="flex items-start gap-3">
+                <span className={cn('h-11 w-11 rounded-xl text-white flex items-center justify-center text-base font-bold shrink-0', clientColor(c.id))}>
+                  {c.name.slice(0, 1).toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink-900 truncate">{c.name}</p>
+                  <p className="text-xs text-ink-500 mt-0.5">Added {formatDate(c.created_at, 'MMM d, yyyy')}</p>
+                </div>
+                <Badge variant={c.status} />
+              </div>
+              <div className="flex items-center gap-2 pt-3 border-t border-ink-100">
+                <Button variant="secondary" size="sm" onClick={() => setSharing(c)} className="flex-1">
+                  <Link2 className="h-3.5 w-3.5" />
+                  Share report
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setEditing(c)} aria-label={`Edit ${c.name}`}>
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <ClientDialog
         open={showAdd}
