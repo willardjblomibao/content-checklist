@@ -398,10 +398,19 @@ export function parseMonthlyWideReport(
  * same weekdays last week, "This month" (1st→today) with the same days last
  * month (date-fns clamps e.g. Mar 31 → Feb 28).
  */
-export function previousPeriod(range: 'today' | 'week' | 'month', from: string, to: string): { from: string; to: string } {
+export function previousPeriod(range: 'today' | 'week' | 'month' | 'custom', from: string, to: string): { from: string; to: string } {
   const f = new Date(from + 'T00:00:00')
   const t = new Date(to + 'T00:00:00')
-  const shift = (d: Date) => (range === 'today' ? subDays(d, 1) : range === 'week' ? subDays(d, 7) : subMonths(d, 1))
+  // Custom: the same number of days immediately before the chosen span.
+  const spanDays = Math.round((t.getTime() - f.getTime()) / 86_400_000) + 1
+  const shift = (d: Date) =>
+    range === 'today'
+      ? subDays(d, 1)
+      : range === 'week'
+        ? subDays(d, 7)
+        : range === 'month'
+          ? subMonths(d, 1)
+          : subDays(d, spanDays)
   return { from: format(shift(f), 'yyyy-MM-dd'), to: format(shift(t), 'yyyy-MM-dd') }
 }
 

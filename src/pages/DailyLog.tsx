@@ -116,7 +116,12 @@ export default function DailyLog() {
   const editId = params.get('edit')
 
   const [clients, setClients] = useState<Client[]>([])
-  const [form, setForm] = useState<FormState>(emptyForm)
+  // ?date=YYYY-MM-DD (e.g. from a missed day on the log calendar) pre-fills the date.
+  const [form, setForm] = useState<FormState>(() => {
+    const d = params.get('date')
+    const valid = d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= todayISO()
+    return { ...emptyForm, production_date: valid && !params.get('edit') ? d : todayISO() }
+  })
   const [loading, setLoading] = useState(!!editId)
   const [saving, setSaving] = useState(false)
   const [ownerId, setOwnerId] = useState<string | null>(null)
@@ -352,7 +357,13 @@ export default function DailyLog() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col flex-1">
       <PageHeader
-        title={editId ? 'Edit log' : "Log today's work"}
+        title={
+          editId
+            ? 'Edit log'
+            : form.production_date === todayISO()
+              ? "Log today's work"
+              : `Log work for ${formatDate(form.production_date, 'EEE, MMM d')}`
+        }
         description={`${formatDate(form.production_date, 'EEEE, MMMM d, yyyy')}${
           editId ? '' : ' · log what you completed for a client, or other work'
         }`}

@@ -7,7 +7,8 @@ import {
 } from 'lucide-react'
 import { WeeklyTrendChart, PlatformBarChart, MonthlyCompareChart, ContentImpactCharts, PlatformVsChart } from '../components/charts/GrowthCharts'
 import { supabase } from '../lib/supabase'
-import { Button, Card, EmptyState, PageSpinner, Select } from '../components/ui/primitives'
+import { Button, Card, EmptyState, PageSpinner, Select, Segmented, StatCard } from '../components/ui/primitives'
+import { BrandMark } from '../components/layout/Sidebar'
 import { MONTH_NAMES } from '../types/database'
 import { cn, formatDate, mondayOfISO, pearsonCorrelation, describeCorrelation } from '../lib/utils'
 
@@ -111,7 +112,7 @@ export default function ClientReport() {
 
   if (status === 'invalid') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-ink-50 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
         <Card className="max-w-sm w-full p-8 text-center">
           <FileWarning className="h-8 w-8 text-clay-600 mx-auto mb-3" />
           <h1 className="text-base font-semibold text-ink-900">This link isn't available</h1>
@@ -124,32 +125,36 @@ export default function ClientReport() {
   }
 
   return (
-    <div className="min-h-screen bg-ink-50 print:bg-white">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-5">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{clientName} — Growth Report</h1>
-            <p className="text-sm text-ink-500 mt-1">View-only · filter, export, or print any section below</p>
-          </div>
-          <Button size="sm" onClick={handlePrint} className="print:hidden">
-            <Printer className="h-3.5 w-3.5" />
-            Print this view
-          </Button>
+    <div className="min-h-screen bg-canvas print:bg-white">
+      <header className="bg-white/90 backdrop-blur border-b border-ink-100 sticky top-0 z-20 print:hidden">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
+          <BrandMark size="sm" />
+          <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-ink-100/80 px-2.5 py-1 text-xs font-semibold text-ink-600">
+            <Eye className="h-3.5 w-3.5" /> View-only report
+          </span>
         </div>
-
-        <div className="flex gap-1 border-b border-ink-100 print:hidden overflow-x-auto">
-          {TABS.map((t) => (
+      </header>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-pine-800 via-pine-700 to-pine-600 text-white p-6 sm:p-7">
+          <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative flex flex-col sm:flex-row sm:items-end gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pine-100/80">Growth report</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-1 truncate">{clientName}</h1>
+              <p className="text-sm text-pine-50/85 mt-1">Filter, export or print any section below.</p>
+            </div>
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                'px-3.5 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors',
-                tab === t.id ? 'border-pine-600 text-pine-700' : 'border-transparent text-ink-500 hover:text-ink-800'
-              )}
+              onClick={handlePrint}
+              className="print:hidden inline-flex items-center gap-2 rounded-xl bg-white text-pine-800 px-4 py-2.5 text-sm font-bold shadow-soft hover:bg-pine-50 self-start sm:self-auto"
             >
-              {t.label}
+              <Printer className="h-4 w-4" />
+              Print this view
             </button>
-          ))}
+          </div>
+        </section>
+
+        <div className="print:hidden overflow-x-auto scrollbar-none">
+          <Segmented ariaLabel="Report section" value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t.id, label: t.label }))} />
         </div>
 
         {metrics.length === 0 && production.length === 0 ? (
@@ -433,21 +438,18 @@ function MonthlyTab({ metrics }: { metrics: GrowthMetricRow[] }) {
         <EmptyState title="No data for these years yet" description="Try different years above." />
       ) : (
         <>
-          <div className={cn('grid grid-cols-1 gap-4', showCompare ? 'sm:grid-cols-3' : 'sm:grid-cols-1 max-w-xs')}>
-            <Card className="p-4">
-              <p className="text-xs font-medium text-ink-500">{yearLabel} Total Views</p>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{totalCurrent.toLocaleString()}</p>
-            </Card>
+          <div className={cn('grid grid-cols-1 gap-3', showCompare ? 'sm:grid-cols-3' : 'sm:grid-cols-1 max-w-xs')}>
+            <StatCard highlight label={`${yearLabel} total views`} value={totalCurrent.toLocaleString()} />
             {showCompare && (
               <>
-                <Card className="p-4">
-                  <p className="text-xs font-medium text-ink-500">{compareYear} Total Views</p>
-                  <p className="text-2xl font-semibold text-ink-900 mt-2">{totalPrior.toLocaleString()}</p>
-                </Card>
-                <Card className="p-4">
-                  <p className="text-xs font-medium text-ink-500">Year-over-Year</p>
-                  <p className="text-2xl font-semibold text-ink-900 mt-2">{yoyPct === null ? '—' : `${Number(yoyPct) >= 0 ? '+' : ''}${yoyPct}%`}</p>
-                </Card>
+                <StatCard label={`${compareYear} total views`} value={totalPrior.toLocaleString()} />
+                <StatCard
+                  label="Year over year"
+                  value={yoyPct === null ? '—' : `${Number(yoyPct) >= 0 ? '+' : ''}${yoyPct}%`}
+                  hint={yoyPct === null ? undefined : Number(yoyPct) >= 0 ? 'up' : 'down'}
+                  deltaGood={yoyPct === null ? undefined : Number(yoyPct) >= 0}
+                  delta={yoyPct === null ? undefined : `${compareYear} → ${yearLabel}`}
+                />
               </>
             )}
           </div>
@@ -559,28 +561,14 @@ function CorrelationTab({ metrics, production }: { metrics: GrowthMetricRow[]; p
         <EmptyState title="Not enough data yet" description="This view needs at least a few weeks of both content and growth data for the same year." />
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="p-4">
-              <div className="flex items-center gap-2 text-ink-500"><Zap className="h-4 w-4" /><span className="text-xs font-medium">Same-Week Correlation</span></div>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{sameWeekR === null ? '—' : sameWeekR.toFixed(2)}</p>
-              <p className="text-xs text-ink-500 mt-1">{describeCorrelation(sameWeekR)}</p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-2 text-ink-500"><Clock className="h-4 w-4" /><span className="text-xs font-medium">Next-Week Correlation</span></div>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{laggedR === null ? '—' : laggedR.toFixed(2)}</p>
-              <p className="text-xs text-ink-500 mt-1">{describeCorrelation(laggedR)}</p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-2 text-ink-500"><Video className="h-4 w-4" /><span className="text-xs font-medium">Total Content Items</span></div>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{totalContent.toLocaleString()}</p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-2 text-ink-500"><TrendingUp className="h-4 w-4" /><span className="text-xs font-medium">Total Views</span></div>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{totalViews.toLocaleString()}</p>
-            </Card>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatCard highlight label="Same-week correlation" icon={<Zap className="h-3.5 w-3.5" />} value={sameWeekR === null ? '—' : sameWeekR.toFixed(2)} sub={describeCorrelation(sameWeekR)} />
+            <StatCard label="Next-week correlation" icon={<Clock className="h-3.5 w-3.5" />} value={laggedR === null ? '—' : laggedR.toFixed(2)} sub={describeCorrelation(laggedR)} />
+            <StatCard label="Total content items" icon={<Video className="h-3.5 w-3.5" />} value={totalContent.toLocaleString()} />
+            <StatCard label="Total views" icon={<TrendingUp className="h-3.5 w-3.5" />} value={totalViews.toLocaleString()} />
           </div>
 
-          <Card className="p-4 bg-pine-50 border-pine-100">
+          <Card className="p-4 bg-pine-50/70 border-pine-100 shadow-none">
             <p className="text-sm text-pine-800">
               <strong>Reading this:</strong> Same-week correlation checks if busier content weeks line up with more
               views that same week. Next-week correlation checks for a delayed payoff. A number near <strong>+1</strong>{' '}
@@ -768,18 +756,22 @@ function CompareTab({ metrics, platforms, clientName }: { metrics: GrowthMetricR
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium text-ink-400 uppercase tracking-wide">{label}</span>
+      <span className="text-xs font-semibold text-ink-600">{label}</span>
       {children}
     </div>
   )
 }
 
 function KpiCard({ icon: Icon, label, value }: { icon: typeof Eye; label: string; value: string }) {
+  const m = value.match(/^(.*) \((.*)\)$/)
   return (
-    <Card className="p-4">
-      <div className="flex items-center gap-2 text-ink-500"><Icon className="h-4 w-4" /><span className="text-xs font-medium">{label}</span></div>
-      <p className="text-2xl font-semibold text-ink-900 mt-2 truncate">{value}</p>
-    </Card>
+    <StatCard
+      label={label}
+      value={<span className="block truncate">{m ? m[2] : value}</span>}
+      sub={m ? m[1] : undefined}
+      icon={<Icon className="h-3.5 w-3.5" />}
+      highlight={label === 'Total Views'}
+    />
   )
 }
 

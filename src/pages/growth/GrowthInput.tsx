@@ -1,11 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
-import { Trash2, ClipboardPaste, UploadCloud, AlertTriangle, FileSpreadsheet, FileUp } from 'lucide-react'
+import { Trash2, ClipboardPaste, UploadCloud, AlertTriangle, FileSpreadsheet, FileUp, ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { addDays, format, parseISO } from 'date-fns'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import { Button, Card, CardContent, CardHeader, EmptyState, Field, Input, PageSpinner, Select, Textarea } from '../../components/ui/primitives'
+import { Button, Card, EmptyState, Field, Input, PageSpinner, Select, Textarea, PageHeader, SectionTitle } from '../../components/ui/primitives'
 import { ConfirmDialog } from '../../components/ui/dialog'
 import type { Client, Platform, WeeklyMetric } from '../../types/database'
 import { formatDate, mondayOfISO, todayISO, weekMeta, detectAnomalies, cn, parseMonthlyWideReport } from '../../lib/utils'
@@ -393,65 +394,60 @@ export default function GrowthInput() {
     }
   }
 
+  const savedThisWeek = Object.keys(existing).length > 0
+  const shiftWeek = (days: number) => setWeekStart(mondayOfISO(format(addDays(parseISO(weekStart), days), 'yyyy-MM-dd')))
+  const clientOptions = isAdmin ? clients : assignedClients
+
+  const uploadBtn =
+    'inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-sm font-semibold bg-white text-ink-800 border border-ink-200 hover:bg-ink-50 hover:border-ink-300 cursor-pointer transition-colors'
+
   return (
-    <div className="flex flex-col gap-6 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Weekly Growth Input</h1>
-        <p className="text-sm text-ink-500 mt-1">One row per platform, one entry per week — saving again for the same week updates it.</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <Card>
-          <CardHeader className="pb-0">
-            <h2 className="text-[15px] font-semibold text-ink-900">Client &amp; Week</h2>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-            <Field label="Client" required>
-              {isAdmin ? (
-                <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              ) : assignedClients.length > 1 ? (
-                <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
-                  {assignedClients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              ) : (
-                <div className="h-10 flex items-center px-3 text-sm text-ink-700 bg-ink-50 border border-ink-100 rounded-lg">
-                  {assignedClients[0]?.name ?? 'No client assigned'}
-                </div>
-              )}
-            </Field>
-            <Field label="Week Start (Monday)" required hint={`${meta.month} ${meta.year} · Week ${meta.week} · ${meta.quarter}`}>
-              <Input
-                type="date"
-                required
-                value={weekStart}
-                onChange={(e) => setWeekStart(mondayOfISO(e.target.value))}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Weekly growth input"
+        description="Enter this week's numbers per platform. Saving again for the same week updates it."
+        actions={
+          <>
+            <Button type="button" variant="secondary" onClick={() => setShowBulk((v) => !v)}>
+              <ClipboardPaste className="h-4 w-4" />
+              Paste from Excel
+            </Button>
+            <label className="inline-flex">
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleCsvImport(file)
+                  e.target.value = ''
+                }}
               />
-            </Field>
-            <Field label="Total (this entry)">
-              <div className="h-10 flex items-center px-3 text-sm text-ink-700 bg-ink-50 border border-ink-100 rounded-lg">
-                {totals.views.toLocaleString()} views · {totals.audience.toLocaleString()} new
-              </div>
-            </Field>
-          </CardContent>
-        </Card>
+              <span className={uploadBtn}>
+                <UploadCloud className="h-4 w-4" />
+                Import CSV
+              </span>
+            </label>
+            <Button type="button" variant="secondary" onClick={() => setShowMonthlyImport((v) => !v)}>
+              <FileSpreadsheet className="h-4 w-4" />
+              Monthly report
+            </Button>
+          </>
+        }
+      />
 
+      {showMonthlyImport && (
         <Card>
-          <CardHeader className="pb-0 flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <h2 className="text-[15px] font-semibold text-ink-900">Import Monthly Report</h2>
-              <p className="text-xs text-ink-500 mt-0.5">Upload a "20XX Growth"-style workbook, or paste the two header rows plus your monthly totals.</p>
-            </div>
-            <div className="flex items-center gap-2">
+          <div className="p-5 flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-[15px] font-semibold text-ink-900">Import a monthly report</h2>
+                <p className="text-xs text-ink-500 mt-0.5 max-w-xl">
+                  Upload a "20XX Growth"-style workbook, or paste the header rows through your last "Month Total" row.
+                  Platform names must already exist (add them on the Platforms page); anything else is skipped and listed
+                  after import.
+                </p>
+              </div>
               <label className="inline-flex">
                 <input
                   type="file"
@@ -463,260 +459,306 @@ export default function GrowthInput() {
                     e.target.value = ''
                   }}
                 />
-                <span className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full text-sm font-medium bg-white text-ink-800 border border-ink-200 hover:bg-pine-50 cursor-pointer">
-                  <FileUp className="h-3.5 w-3.5" />
-                  Upload Excel File
+                <span className={uploadBtn}>
+                  <FileUp className="h-4 w-4" />
+                  Upload Excel file
                 </span>
               </label>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setShowMonthlyImport((v) => !v)}>
-                <FileSpreadsheet className="h-3.5 w-3.5" />
-                {showMonthlyImport ? 'Hide' : 'Paste Instead'}
+            </div>
+            <div className="flex items-end gap-3 flex-wrap">
+              <Field label="Year for these rows">
+                <Input
+                  type="number"
+                  className="w-28"
+                  value={monthlyImportYear}
+                  onChange={(e) => setMonthlyImportYear(Number(e.target.value) || monthlyImportYear)}
+                />
+              </Field>
+              {monthlyFileSheets.length > 1 && (
+                <Field label={`Sheet (from ${monthlyFileName})`}>
+                  <Select className="w-56" onChange={(e) => handleMonthlySheetPick(e.target.value)} defaultValue="">
+                    <option value="" disabled>
+                      Choose a sheet…
+                    </option>
+                    {monthlyFileSheets.map((sh) => (
+                      <option key={sh} value={sh}>
+                        {sh}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
+            </div>
+            <Textarea
+              rows={6}
+              className="font-mono text-xs"
+              placeholder={'Week or Month\tTotals\t\tAverages\t...\nWeek or Month\tViews\tFollowers\t...\nJanuary Total\t179155\t1256\t...'}
+              value={monthlyImportText}
+              onChange={(e) => setMonthlyImportText(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setMonthlyImportText('')
+                  setShowMonthlyImport(false)
+                  setMonthlyFileSheets([])
+                  setMonthlyFileWorkbook(null)
+                  setMonthlyFileName('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="button" loading={monthlyImporting} onClick={handleMonthlyImport}>
+                Import
               </Button>
             </div>
-          </CardHeader>
-          {showMonthlyImport && (
-            <CardContent className="pt-0">
-              <div className="mt-3 flex flex-col gap-3 bg-ink-50 border border-ink-100 rounded-xl p-3">
-                <div className="flex items-end gap-3 flex-wrap">
-                  <Field label="Year for these rows">
-                    <Input
-                      type="number"
-                      className="w-28"
-                      value={monthlyImportYear}
-                      onChange={(e) => setMonthlyImportYear(Number(e.target.value) || monthlyImportYear)}
-                    />
-                  </Field>
-                  {monthlyFileSheets.length > 1 && (
-                    <Field label={`Sheet (from ${monthlyFileName})`}>
-                      <Select
-                        className="w-56"
-                        onChange={(e) => handleMonthlySheetPick(e.target.value)}
-                        defaultValue=""
-                      >
-                        <option value="" disabled>
-                          Choose a sheet…
-                        </option>
-                        {monthlyFileSheets.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  )}
-                </div>
-                <p className="text-xs text-ink-500">
-                  Uploading a file fills this in automatically from its "20XX Growth" sheet. To paste instead, select the
-                  header row through your last "Month Total" row in the sheet, copy, and paste below. Platform names must
-                  already exist here (add them from the Platforms page first) — anything else gets skipped and listed
-                  after import.
-                </p>
-                <Textarea
-                  rows={6}
-                  placeholder={'Week or Month\tTotals\t\tAverages\t...\nWeek or Month\tViews\tFollowers\t...\nJanuary Total\t179155\t1256\t...'}
-                  value={monthlyImportText}
-                  onChange={(e) => setMonthlyImportText(e.target.value)}
-                />
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      setMonthlyImportText('')
-                      setShowMonthlyImport(false)
-                      setMonthlyFileSheets([])
-                      setMonthlyFileWorkbook(null)
-                      setMonthlyFileName('')
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="button" size="sm" loading={monthlyImporting} onClick={handleMonthlyImport}>
-                    Import
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          )}
+          </div>
         </Card>
+      )}
 
+      {showBulk && (
         <Card>
-          <CardHeader className="pb-0 flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-[15px] font-semibold text-ink-900">Platforms</h2>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setShowBulk((v) => !v)}>
-                <ClipboardPaste className="h-3.5 w-3.5" />
-                Paste from Excel
-              </Button>
-              <label className="inline-flex">
-                <input
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) handleCsvImport(file)
-                    e.target.value = ''
-                  }}
-                />
-                <span className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full text-sm font-medium bg-white text-ink-800 border border-ink-200 hover:bg-pine-50 cursor-pointer">
-                  <UploadCloud className="h-3.5 w-3.5" />
-                  Import CSV
-                </span>
-              </label>
+          <div className="p-5 flex flex-col gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold text-ink-900">Paste from Excel or Sheets</h2>
+              <p className="text-xs text-ink-500 mt-0.5">
+                One platform per line: <code className="bg-ink-100 rounded px-1">Platform&#9;Views&#9;New Audience</code> (tab or comma separated).
+              </p>
             </div>
-          </CardHeader>
-          {showBulk && (
-            <CardContent className="pt-0">
-              <div className="mt-3 flex flex-col gap-2 bg-ink-50 border border-ink-100 rounded-xl p-3">
-                <p className="text-xs text-ink-500">
-                  Paste rows copied from Excel/Sheets: one platform per line, <code>Platform&#9;Views&#9;New Audience</code> (tab or comma separated).
-                </p>
-                <Textarea
-                  rows={4}
-                  placeholder={'YouTube\t4488\t105\nInstagram\t4707\t-47'}
-                  value={bulkText}
-                  onChange={(e) => setBulkText(e.target.value)}
-                />
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="secondary" size="sm" onClick={() => { setBulkText(''); setShowBulk(false) }}>
-                    Cancel
-                  </Button>
-                  <Button type="button" size="sm" onClick={applyBulkPaste}>
-                    Apply to Form
-                  </Button>
+            <Textarea
+              rows={4}
+              className="font-mono text-xs"
+              placeholder={'YouTube\t4488\t105\nInstagram\t4707\t-47'}
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => { setBulkText(''); setShowBulk(false) }}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={applyBulkPaste}>
+                Apply to table
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)] gap-6 items-start">
+        {/* ---------- Entry table ---------- */}
+        <form onSubmit={handleSubmit} className="min-w-0">
+          <Card className="overflow-hidden">
+            <div className="p-5 flex flex-wrap items-end gap-3 border-b border-ink-100">
+              <div className="flex-1 min-w-[180px]">
+                <label className="text-sm font-semibold text-ink-700 mb-1.5 block">Client</label>
+                {clientOptions.length > 1 ? (
+                  <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
+                    {clientOptions.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
+                ) : (
+                  <div className="h-10 flex items-center px-3 text-sm font-medium text-ink-800 bg-ink-50 border border-ink-100 rounded-lg">
+                    {clientOptions[0]?.name ?? 'No client assigned'}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-[220px]">
+                <label className="text-sm font-semibold text-ink-700 mb-1.5 block">Week starting (Monday)</label>
+                <div className="flex items-center h-10 rounded-lg border border-ink-200 bg-white overflow-hidden">
+                  <button type="button" onClick={() => shiftWeek(-7)} aria-label="Previous week" className="h-full px-2.5 text-ink-500 hover:bg-ink-50">
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <input
+                    type="date"
+                    required
+                    aria-label="Week start"
+                    value={weekStart}
+                    onChange={(e) => e.target.value && setWeekStart(mondayOfISO(e.target.value))}
+                    className="flex-1 min-w-0 h-full text-center text-sm font-semibold text-ink-900 outline-none bg-transparent"
+                  />
+                  <button type="button" onClick={() => shiftWeek(7)} aria-label="Next week" className="h-full px-2.5 text-ink-500 hover:bg-ink-50">
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-            </CardContent>
-          )}
-          <CardContent className="mt-4">
+              <span
+                className={cn(
+                  'rounded-full px-2.5 py-1 text-xs font-semibold mb-2 whitespace-nowrap',
+                  savedThisWeek ? 'bg-pine-100 text-pine-800' : 'bg-amber-100 text-amber-600'
+                )}
+              >
+                {savedThisWeek ? 'Saved · editing' : 'Not saved yet'}
+              </span>
+              <p className="w-full text-xs text-ink-500 -mt-1">
+                {meta.month} {meta.year} · Week {meta.week} · {meta.quarter}
+              </p>
+            </div>
+
             {loadingPlatforms ? (
               <PageSpinner />
             ) : platforms.length === 0 ? (
-              <EmptyState
-                title="No platforms for this client"
-                description="Add platforms from Growth → Platforms first."
-              />
+              <EmptyState title="No platforms for this client" description="Add platforms from Growth → Platforms first." />
             ) : (
-              <div className="flex flex-col divide-y divide-ink-100">
-                {platforms.map((p) => {
-                  const totalVal = values[p.id]?.total_audience
-                  const prevTotal = previousTotals[p.id]
-                  const change = totalVal && prevTotal != null ? parseInt(totalVal, 10) - prevTotal : null
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
+                      <th className="px-5 py-3">Platform</th>
+                      <th className="px-2 py-3 text-right">Views</th>
+                      <th className="px-2 py-3 text-right">New audience</th>
+                      <th className="px-2 py-3 text-right">Total audience</th>
+                      <th className="px-5 py-3 text-right">vs last entry</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {platforms.map((p) => {
+                      const totalVal = values[p.id]?.total_audience
+                      const prevTotal = previousTotals[p.id]
+                      const change = totalVal && prevTotal != null ? parseInt(totalVal, 10) - prevTotal : null
+                      const cellInput =
+                        'no-spin w-full max-w-[128px] ml-auto block h-9 rounded-lg border border-ink-200 bg-white px-2.5 text-right text-sm font-semibold tabular-nums text-ink-900 placeholder:text-ink-300 placeholder:font-normal focus:border-pine-500 focus:ring-2 focus:ring-pine-500/15 outline-none'
+                      return (
+                        <tr key={p.id} className="border-b border-ink-100/70 last:border-0">
+                          <td className="px-5 py-2.5">
+                            <span className="inline-flex items-center gap-2.5">
+                              <span
+                                className="h-7 w-7 rounded-lg flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                                style={{ backgroundColor: p.color }}
+                              >
+                                {p.name.slice(0, 1).toUpperCase()}
+                              </span>
+                              <span className="font-semibold text-ink-900">{p.name}</span>
+                              {existing[p.id] && <Check className="h-3.5 w-3.5 text-pine-600" aria-label="Saved" />}
+                            </span>
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              inputMode="numeric"
+                              aria-label={`${p.name} views`}
+                              placeholder="0"
+                              className={cellInput}
+                              value={values[p.id]?.views ?? ''}
+                              onChange={(e) => updateValue(p.id, 'views', e.target.value)}
+                            />
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <input
+                              type="number"
+                              step={1}
+                              inputMode="numeric"
+                              aria-label={`${p.name} new audience`}
+                              placeholder="0"
+                              className={cn(cellInput, Number(values[p.id]?.new_audience) < 0 && 'text-clay-600')}
+                              value={values[p.id]?.new_audience ?? ''}
+                              onChange={(e) => updateValue(p.id, 'new_audience', e.target.value)}
+                            />
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              inputMode="numeric"
+                              aria-label={`${p.name} total audience`}
+                              placeholder="optional"
+                              className={cellInput}
+                              value={totalVal ?? ''}
+                              onChange={(e) => updateValue(p.id, 'total_audience', e.target.value)}
+                            />
+                          </td>
+                          <td className="px-5 py-2.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap">
+                            {change === null ? (
+                              <span className="text-ink-300">—</span>
+                            ) : (
+                              <span className={change >= 0 ? 'text-pine-600' : 'text-clay-600'}>
+                                {change >= 0 ? '▲' : '▼'} {Math.abs(change).toLocaleString()}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    <tr className="bg-ink-50/70 font-bold text-ink-900">
+                      <td className="px-5 py-3">Total</td>
+                      <td className="px-2 py-3 text-right tabular-nums pr-4">{totals.views.toLocaleString()}</td>
+                      <td className="px-2 py-3 text-right tabular-nums pr-4">
+                        {totals.audience >= 0 ? '+' : ''}
+                        {totals.audience.toLocaleString()}
+                      </td>
+                      <td className="px-2 py-3" />
+                      <td className="px-5 py-3" />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="px-5 py-3.5 flex items-center justify-between gap-3 border-t border-ink-100">
+              <p className="text-xs text-ink-500">Total audience is optional: the all-time follower count on that date.</p>
+              <Button type="submit" loading={saving} disabled={platforms.length === 0}>
+                <Check className="h-4 w-4" />
+                {savedThisWeek ? 'Update week' : 'Save week'}
+              </Button>
+            </div>
+          </Card>
+        </form>
+
+        {/* ---------- Recent entries ---------- */}
+        <section className="min-w-0">
+          <SectionTitle aside={clientOptions.find((c) => c.id === clientId)?.name}>Recent entries</SectionTitle>
+          <Card className="overflow-hidden">
+            {loadingRecent ? (
+              <PageSpinner />
+            ) : recent.length === 0 ? (
+              <EmptyState title="No entries yet" description="Weekly data you save will show up here." />
+            ) : (
+              <div className="divide-y divide-ink-100 max-h-[560px] overflow-y-auto scrollbar-thin">
+                {recent.map((r) => {
+                  const flags = anomalies.get(r.id)
                   return (
-                    <div key={p.id} className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3 items-end first:pt-0 last:pb-0">
-                      <div className="flex items-center gap-2 text-sm font-medium text-ink-800 col-span-2 sm:col-span-1">
-                        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                        {p.name}
+                    <div key={r.id} className="flex items-center gap-3 px-4 py-2.5 group">
+                      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: r.platform?.color ?? '#B9BCB4' }} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-ink-900 truncate">{r.platform?.name ?? '—'}</p>
+                        <p className="text-xs text-ink-500">
+                          Week of {formatDate(r.week_start, 'MMM d')}
+                          {flags && flags.length > 0 && (
+                            <span className="ml-1.5 inline-flex items-center gap-0.5 text-amber-600 font-medium" title={flags.join(', ')}>
+                              <AlertTriangle className="h-3 w-3" />
+                              {flags[0]}
+                            </span>
+                          )}
+                        </p>
                       </div>
-                      <Field label="Views">
-                        <Input
-                          type="number"
-                          min={0}
-                          step={1}
-                          placeholder="0"
-                          value={values[p.id]?.views ?? ''}
-                          onChange={(e) => updateValue(p.id, 'views', e.target.value)}
-                        />
-                      </Field>
-                      <Field label="New Audience">
-                        <Input
-                          type="number"
-                          step={1}
-                          placeholder="0"
-                          value={values[p.id]?.new_audience ?? ''}
-                          onChange={(e) => updateValue(p.id, 'new_audience', e.target.value)}
-                        />
-                      </Field>
-                      <Field
-                        label="Total Audience"
-                        hint={change !== null ? `${change >= 0 ? '+' : ''}${change.toLocaleString()} vs last entry` : 'optional — all-time follower count'}
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-ink-900 tabular-nums">{r.views.toLocaleString()}</p>
+                        <p className={cn('text-[11px] tabular-nums', r.new_audience < 0 ? 'text-clay-600 font-semibold' : 'text-ink-500')}>
+                          {r.new_audience >= 0 ? '+' : ''}
+                          {r.new_audience.toLocaleString()} audience
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setToDelete(r)}
+                        className="p-1.5 text-ink-300 hover:text-clay-600 hover:bg-clay-50 rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                        aria-label="Delete"
                       >
-                        <Input
-                          type="number"
-                          min={0}
-                          step={1}
-                          placeholder="—"
-                          value={totalVal ?? ''}
-                          onChange={(e) => updateValue(p.id, 'total_audience', e.target.value)}
-                        />
-                      </Field>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   )
                 })}
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-end">
-          <Button type="submit" loading={saving} disabled={platforms.length === 0}>
-            Save Weekly Data
-          </Button>
-        </div>
-      </form>
-
-      <div>
-        <h2 className="text-[15px] font-semibold text-ink-900 mb-3">Recent Entries</h2>
-        <Card className="overflow-hidden">
-          {loadingRecent ? (
-            <PageSpinner />
-          ) : recent.length === 0 ? (
-            <EmptyState title="No entries yet" description="Weekly data you save will show up here." />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-ink-100 bg-ink-50/60 text-left text-xs font-semibold text-ink-500">
-                    <th className="px-5 py-3">Week</th>
-                    <th className="px-3 py-3">Platform</th>
-                    <th className="px-3 py-3 text-right">Views</th>
-                    <th className="px-3 py-3 text-right">New Audience</th>
-                    <th className="px-3 py-3 text-right">Total Audience</th>
-                    <th className="px-5 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recent.map((r) => {
-                    const flags = anomalies.get(r.id)
-                    return (
-                      <tr key={r.id} className="border-b border-ink-50 last:border-0">
-                        <td className="px-5 py-3 text-ink-700 whitespace-nowrap">{formatDate(r.week_start)}</td>
-                        <td className="px-3 py-3 text-ink-700">{r.platform?.name ?? '—'}</td>
-                        <td className="px-3 py-3 text-right text-ink-600">{r.views.toLocaleString()}</td>
-                        <td className={cn('px-3 py-3 text-right', r.new_audience < 0 ? 'text-clay-600 font-medium' : 'text-ink-600')}>
-                          {r.new_audience.toLocaleString()}
-                        </td>
-                        <td className="px-3 py-3 text-right text-ink-500">{r.total_audience != null ? r.total_audience.toLocaleString() : '—'}</td>
-                        <td className="px-5 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            {flags && flags.length > 0 && (
-                              <span
-                                className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full"
-                                title={flags.join(', ')}
-                              >
-                                <AlertTriangle className="h-3 w-3" />
-                                {flags[0]}
-                              </span>
-                            )}
-                            <button
-                              onClick={() => setToDelete(r)}
-                              className="p-1.5 text-ink-500 hover:text-clay-600 hover:bg-clay-50 rounded-lg"
-                              aria-label="Delete"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
+          </Card>
+        </section>
       </div>
 
       <ConfirmDialog

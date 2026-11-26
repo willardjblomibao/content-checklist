@@ -311,6 +311,7 @@ export default function PlatformComparison() {
               fpd={totals.bFpd}
               isViewsWinner={winner(totals.aViews, totals.bViews) === 'b'}
               isFollowersWinner={winner(totals.aFollowers, totals.bFollowers) === 'b'}
+              accent="#6A4CE2"
             />
           </div>
 
@@ -362,7 +363,7 @@ export default function PlatformComparison() {
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium text-ink-400 uppercase tracking-wide">{label}</span>
+      <span className="text-xs font-semibold text-ink-600">{label}</span>
       {children}
     </div>
   )
@@ -376,7 +377,9 @@ function ComparisonCard({
   fpd,
   isViewsWinner,
   isFollowersWinner,
+  accent = '#0E9C83',
 }: {
+  accent?: string
   name: string
   views: number
   followers: number
@@ -386,9 +389,20 @@ function ComparisonCard({
   isFollowersWinner: boolean
 }) {
   return (
-    <Card className="p-5">
-      <h3 className="text-base font-semibold text-ink-900 mb-3">{name}</h3>
-      <div className="grid grid-cols-2 gap-4">
+    <Card className="p-5 relative overflow-hidden">
+      <span className="absolute inset-x-0 top-0 h-1" style={{ background: accent }} />
+      <div className="flex items-center gap-2.5 mb-4">
+        <span className="h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold text-white" style={{ background: accent }}>
+          {name.slice(0, 1).toUpperCase()}
+        </span>
+        <h3 className="text-base font-semibold text-ink-900">{name}</h3>
+        {(isViewsWinner || isFollowersWinner) && (
+          <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-600">
+            <Crown className="h-3 w-3" /> Leads
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-4">
         <Stat label="Views" value={views.toLocaleString()} winner={isViewsWinner} />
         <Stat label="Followers Gained" value={followers.toLocaleString()} winner={isFollowersWinner} />
         <Stat label="Views per Follower" value={vpf === null ? '—' : vpf.toFixed(1)} />
@@ -405,7 +419,7 @@ function Stat({ label, value, winner }: { label: string; value: string; winner?:
         {label}
         {winner && <Crown className="h-3 w-3 text-amber-500" />}
       </p>
-      <p className="text-lg font-semibold text-ink-900 mt-0.5">{value}</p>
+      <p className="text-xl font-bold tracking-tight text-ink-900 mt-0.5 tabular-nums">{value}</p>
     </div>
   )
 }

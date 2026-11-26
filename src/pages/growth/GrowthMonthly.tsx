@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { MonthlyCompareChart } from '../../components/charts/GrowthCharts'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { Card, EmptyState, PageSpinner, Select } from '../../components/ui/primitives'
+import { Card, EmptyState, PageSpinner, Select, StatCard } from '../../components/ui/primitives'
 import type { Client, WeeklyMetric } from '../../types/database'
 import { MONTH_NAMES } from '../../types/database'
 import { cn } from '../../lib/utils'
@@ -154,21 +154,18 @@ export default function GrowthMonthly() {
         <EmptyState title="No data for these years yet" description="Add weekly growth data first from the Weekly Growth page." />
       ) : (
         <>
-          <div className={cn('grid grid-cols-1 gap-4', showCompare ? 'sm:grid-cols-3' : 'sm:grid-cols-1 max-w-xs')}>
-            <Card className="p-4">
-              <p className="text-xs font-medium text-ink-500">{yearLabel} Total Views</p>
-              <p className="text-2xl font-semibold text-ink-900 mt-2">{totalCurrent.toLocaleString()}</p>
-            </Card>
+          <div className={cn('grid grid-cols-1 gap-3', showCompare ? 'sm:grid-cols-3' : 'sm:grid-cols-1 max-w-xs')}>
+            <StatCard highlight label={`${yearLabel} total views`} value={totalCurrent.toLocaleString()} />
             {showCompare && (
               <>
-                <Card className="p-4">
-                  <p className="text-xs font-medium text-ink-500">{compareYear} Total Views</p>
-                  <p className="text-2xl font-semibold text-ink-900 mt-2">{totalPrior.toLocaleString()}</p>
-                </Card>
-                <Card className="p-4">
-                  <p className="text-xs font-medium text-ink-500">Year-over-Year</p>
-                  <p className="text-2xl font-semibold text-ink-900 mt-2">{yoyPct === null ? '—' : `${Number(yoyPct) >= 0 ? '+' : ''}${yoyPct}%`}</p>
-                </Card>
+                <StatCard label={`${compareYear} total views`} value={totalPrior.toLocaleString()} />
+                <StatCard
+                  label="Year over year"
+                  value={yoyPct === null ? '—' : `${Number(yoyPct) >= 0 ? '+' : ''}${yoyPct}%`}
+                  delta={yoyPct === null ? undefined : `${compareYear} → ${yearLabel}`}
+                  hint={yoyPct === null ? undefined : Number(yoyPct) >= 0 ? 'up' : 'down'}
+                  deltaGood={yoyPct === null ? undefined : Number(yoyPct) >= 0}
+                />
               </>
             )}
           </div>

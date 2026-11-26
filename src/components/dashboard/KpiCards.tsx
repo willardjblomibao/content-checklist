@@ -1,13 +1,15 @@
-import { Video, GalleryHorizontal, FileText, Repeat, Layers } from 'lucide-react'
+import { Video, GalleryHorizontal, FileText, Repeat, Layers, CalendarDays } from 'lucide-react'
+import { format } from 'date-fns'
 import { Segmented, StatCard } from '../ui/primitives'
 import { percentChange } from '../../lib/utils'
 
-export type RangeKey = 'today' | 'week' | 'month'
+export type RangeKey = 'today' | 'week' | 'month' | 'custom'
 
 const COMPARE_LABEL: Record<RangeKey, string> = {
   today: 'vs yesterday',
   week: 'vs last week',
   month: 'vs last month',
+  custom: 'vs previous period',
 }
 
 function sum(t: Record<string, number>, keys: string[]) {
@@ -98,17 +100,63 @@ export function KpiCards({
   )
 }
 
-export function RangeSwitcher({ value, onChange }: { value: RangeKey; onChange: (v: RangeKey) => void }) {
+export interface CustomRange {
+  from: string
+  to: string
+}
+
+/**
+ * Today / This week / This month / Custom. Choosing Custom reveals From and
+ * To date fields; the range only applies once both are set and From <= To.
+ */
+export function RangeSwitcher({
+  value,
+  onChange,
+  custom,
+  onCustomChange,
+}: {
+  value: RangeKey
+  onChange: (v: RangeKey) => void
+  custom?: CustomRange
+  onCustomChange?: (r: CustomRange) => void
+}) {
+  const today = format(new Date(), 'yyyy-MM-dd')
   return (
-    <Segmented
-      ariaLabel="Date range"
-      value={value}
-      onChange={onChange}
-      options={[
-        { value: 'today', label: 'Today' },
-        { value: 'week', label: 'This week' },
-        { value: 'month', label: 'This month' },
-      ]}
-    />
+    <div className="flex flex-wrap items-center gap-2 justify-end">
+      {value === 'custom' && custom && onCustomChange && (
+        <div className="flex items-center gap-1.5 rounded-[10px] bg-white border border-ink-200 px-2 py-1 shadow-card">
+          <CalendarDays className="h-3.5 w-3.5 text-ink-400" />
+          <input
+            type="date"
+            aria-label="From date"
+            value={custom.from}
+            max={custom.to || today}
+            onChange={(e) => e.target.value && onCustomChange({ ...custom, from: e.target.value })}
+            className="bg-transparent text-[13px] font-medium text-ink-800 outline-none w-[124px]"
+          />
+          <span className="text-ink-300">→</span>
+          <input
+            type="date"
+            aria-label="To date"
+            value={custom.to}
+            min={custom.from}
+            max={today}
+            onChange={(e) => e.target.value && onCustomChange({ ...custom, to: e.target.value })}
+            className="bg-transparent text-[13px] font-medium text-ink-800 outline-none w-[124px]"
+          />
+        </div>
+      )}
+      <Segmented
+        ariaLabel="Date range"
+        value={value}
+        onChange={onChange}
+        options={[
+          { value: 'today', label: 'Today' },
+          { value: 'week', label: 'This week' },
+          { value: 'month', label: 'This month' },
+          { value: 'custom', label: 'Custom' },
+        ]}
+      />
+    </div>
   )
 }

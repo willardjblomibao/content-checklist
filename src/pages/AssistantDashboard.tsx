@@ -3,17 +3,20 @@ import { Link } from 'react-router-dom'
 import { Briefcase, Plus, StickyNote, Video, GalleryHorizontal, FileText, ArrowRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { KpiCards, RangeSwitcher, type RangeKey } from '../components/dashboard/KpiCards'
+import { KpiCards, RangeSwitcher, type RangeKey, type CustomRange } from '../components/dashboard/KpiCards'
 import { ContributionHeatmap } from '../components/dashboard/ContributionHeatmap'
 import { StreakCard } from '../components/dashboard/StreakCard'
 import { OtherWorkPanel } from '../components/dashboard/OtherWorkPanel'
 import { TodayHero, chipsFor } from '../components/dashboard/TodayHero'
+import { LogCalendar } from '../components/dashboard/LogCalendar'
+import { endOfMonth, format, startOfMonth } from 'date-fns'
 import { Button, Card, EmptyState, PageSpinner, Badge, PageHeader, SectionTitle } from '../components/ui/primitives'
 import { PRODUCTION_FIELDS, logActivityCount, videoFormatTotals, editedSplit, logClientLabel, type ProductionLogWithRelations } from '../types/database'
 import { computeStreak, formatDate, greeting, previousPeriod, startOfMonthISO, startOfWeekISO, todayISO } from '../lib/utils'
 
-function rangeToDates(range: RangeKey): { from: string; to: string } {
+function rangeToDates(range: RangeKey, custom: CustomRange): { from: string; to: string } {
   const to = todayISO()
+  if (range === 'custom') return custom.from <= custom.to ? custom : { from: custom.to, to: custom.from }
   if (range === 'today') return { from: to, to }
   if (range === 'week') return { from: startOfWeekISO(), to }
   return { from: startOfMonthISO(), to }
@@ -44,14 +47,18 @@ const SELECT_LOG = '*, client:clients(id, name, status)'
 export default function AssistantDashboard() {
   const { profile } = useAuth()
   const [range, setRange] = useState<RangeKey>('week')
+  const [custom, setCustom] = useState<CustomRange>(() => ({ from: startOfMonthISO(), to: todayISO() }))
   const [logs, setLogs] = useState<ProductionLogWithRelations[]>([])
   const [prevLogs, setPrevLogs] = useState<ProductionLogWithRelations[]>([])
   const [todayLogs, setTodayLogs] = useState<ProductionLogWithRelations[]>([])
   const [recent, setRecent] = useState<ProductionLogWithRelations[]>([])
   const [heatmapLogs, setHeatmapLogs] = useState<ProductionLogWithRelations[]>([])
   const [loading, setLoading] = useState(true)
+  const [calMonth, setCalMonth] = useState(() => startOfMonth(new Date()))
+  const [calLogs, setCalLogs] = useState<ProductionLogWithRelations[]>([])
+  const [calLoading, setCalLoading] = useState(true)
 
-  const { from, to } = rangeToDates(range)
+  const { from, to } = rangeToDates(range, custom)
   const prev = previousPeriod(range, from, to)
 
   useEffect(() => {
@@ -97,6 +104,28 @@ export default function AssistantDashboard() {
       .gte('production_date', start.toISOString().slice(0, 10))
       .then(({ data }) => setHeatmapLogs((data ?? []) as unknown as ProductionLogWithRelations[]))
   }, [profile])
+
+  // Logging calendar: every entry in the displayed month.
+  useEffect(() => {
+    if (!profile) return
+    setCalLoading(true)
+    supabase
+      .from('production_logs')
+      .select('user_id, production_date, videos_edited_count, videos_reedited_count, carousels_edited_count, carousels_reedited_count, text_posts_prepared_count, text_posts_reedited_count, is_other_work')
+      .eq('user_id', profile.id)
+      .gte('production_date', format(calMonth, 'yyyy-MM-dd'))
+      .lte('production_date', format(endOfMonth(calMonth), 'yyyy-MM-dd'))
+      .then(({ data }) => {
+        setCalLogs((data ?? []) as unknown as ProductionLogWithRelations[])
+        setCalLoading(false)
+      })
+  }, [profile, calMonth])
+
+  const calCounts = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const log of calLogs) map.set(log.production_date, (map.get(log.production_date) ?? 0) + logActivityCount(log))
+    return map
+  }, [calLogs])
 
   const heatmapCounts = useMemo(() => {
     const map = new Map<string, number>()
@@ -144,7 +173,7 @@ export default function AssistantDashboard() {
       />
 
       <section>
-        <SectionTitle aside={<RangeSwitcher value={range} onChange={setRange} />} className="flex-wrap">
+        <SectionTitle aside={<RangeSwitcher value={range} onChange={setRange} custom={custom} onCustomChange={setCustom} />} className="flex-wrap">
           Your production
         </SectionTitle>
         {loading ? <PageSpinner /> : <KpiCards totals={totals} previous={prevTotals} range={range} videoSplit={editedSplit(logs)} />}
@@ -152,6 +181,18 @@ export default function AssistantDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2 flex flex-col gap-6 min-w-0">
+          <section>
+            <SectionTitle aside="Click a missed day to log it">Log calendar</SectionTitle>
+            <LogCalendar
+              month={calMonth}
+              onMonthChange={setCalMonth}
+              counts={calCounts}
+              startDate={(profile?.created_at ?? '').slice(0, 10)}
+              canBackfill
+              loading={calLoading}
+            />
+          </section>
+
           <section>
             <SectionTitle>Your activity</SectionTitle>
             <Card>
